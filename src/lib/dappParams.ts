@@ -1,0 +1,30 @@
+
+let usersKeysAddress: string;
+let usdtAddress: string;
+let socialPostAddress: string;
+let RPC_ENDPOINT: string;
+let CHAIN_ID: number;
+let GAS_PRICE = 5000000000000;
+let PRIVATE_KEY: string = process.env.PRIVATE_KEY || ''
+
+const MODE = process.env.SOCIAL_MODE || process.env.NEXT_PUBLIC_SOCIAL_MODE;
+console.log("MODE", MODE)
+
+if (MODE == 'development') {
+    CHAIN_ID = 1;
+    RPC_ENDPOINT = 'https://rpc.testnet.(...)';
+    usersKeysAddress = '0x';
+    usdtAddress = '0x';
+    socialPostAddress = '0x';
+    GAS_PRICE = 10000000;
+} else if (MODE == 'production') {
+    CHAIN_ID = 2;
+    RPC_ENDPOINT = 'https://rpc2.mainnet.(...)';
+    usersKeysAddress = '0x';
+    usdtAddress = '0x';
+    socialPostAddress = '0x';
+} else {
+    throw new Error('set SOCIAL_MODE to development or production');
+}
+
+export { usersKeysAddress, usdtAddress, socialPostAddress, RPC_ENDPOINT, GAS_PRICE, CHAIN_ID, PRIVATE_KEY };
