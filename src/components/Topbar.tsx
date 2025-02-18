@@ -10,7 +10,7 @@ const Topbar = () => {
   return (
     <div className="flex justify-between items-center p-4 mb-4 bg-white shadow" data-testid="topbar-container">
       <Link href="/private/home" data-testid="topbar-logo">
-        Logo
+        Social
       </Link>
       <Link href="/private/account" data-testid="topbar-account-link">
         <div className="flex items-center">
