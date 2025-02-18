@@ -16,7 +16,8 @@
     "@headlessui/react": "^1.7.17",
     "@heroicons/react": "^2.0.18",
     "axios": "^1.5.0",
-    "ethers": "^6.7.1",
+    "bufferutil": "^4.0.9",
+    "ethers": "6",
     "firebase": "^10.3.1",
     "firebase-admin": "^11.10.1",
     "geist": "^1.2.2",
@@ -31,7 +32,9 @@
     "react-hook-form": "^7.46.1",
     "react-hot-toast": "^2.4.1",
     "react-markdown": "^8.0.7",
-    "react-qr-code": "^2.0.12"
+    "react-qr-code": "^2.0.12",
+    "utf-8-validate": "^6.0.5",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/node": "^17.0.31",
