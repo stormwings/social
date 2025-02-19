@@ -3,7 +3,7 @@
 import AuthCheck from "@/components/AuthCheck";
 import AdminPostFeed from "@/components/AdminPostFeed";
 import TopbarMedia from "@/components/TopbarMedia";
-import AnimationEmpty from "@/components/animations/AnimationEmpty";
+// import AnimationEmpty from "@/components/animations/AnimationEmpty";
 
 import { useUserData, useUserPosts } from "@/lib/hooks";
 
@@ -32,7 +32,7 @@ function PostList() {
           />
           <div className="max-w-sm mx-auto">
               <div className="mb-20 max-w-2xl mx-auto py-24 px-4 sm:px-6 lg:px-4">
-                  <AnimationEmpty />
+                  {/* <AnimationEmpty /> */} empty
               </div>
           </div>
       </div>

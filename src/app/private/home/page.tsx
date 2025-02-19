@@ -3,7 +3,7 @@
 import PostFeed from '@/components/PostFeed';
 import TopbarMedia from '@/components/TopbarMedia';
 import { useUserData, useUserKeys, useKeyedPosts } from '@/lib/hooks';
-import AnimationEmpty from "@/components/animations/AnimationEmpty";
+// import AnimationEmpty from "@/components/animations/AnimationEmpty";
 
 export default function KeyedPosts() {
     const { user } = useUserData();
@@ -16,7 +16,7 @@ export default function KeyedPosts() {
                 <TopbarMedia title="Home" showBack />
                 <div className="max-w-sm mx-auto">
                     <div className="mb-20 max-w-2xl mx-auto py-24 px-4 sm:px-6 lg:px-4">
-                        <AnimationEmpty />
+                        {/* <AnimationEmpty /> */} empty
                     </div>
                 </div>
             </div>
