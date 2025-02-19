@@ -1,4 +1,4 @@
-export const maxDuration = 90;
+export const maxDuration = 60;
 
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers'

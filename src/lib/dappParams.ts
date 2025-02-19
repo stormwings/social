@@ -11,18 +11,19 @@ const MODE = process.env.SOCIAL_MODE || process.env.NEXT_PUBLIC_SOCIAL_MODE;
 console.log("MODE", MODE)
 
 if (MODE == 'development') {
-    CHAIN_ID = 1;
-    RPC_ENDPOINT = 'https://rpc.testnet.(...)';
-    usersKeysAddress = '0x';
-    usdtAddress = '0x';
-    socialPostAddress = '0x';
+    CHAIN_ID = 418;
+    RPC_ENDPOINT = 'https://rpc.testnet.lachain.network';
+    usersKeysAddress = '0xAc8a31177dA73a1d82976676e4Fa70CF7BB00Fbb';
+    usdtAddress = '0xf6Ca7FD7722b5Fa683788aE56b82df3501B54386';
+    socialPostAddress = '0x6B77F6200b9567B559D106F5cc747Bd3248fF91B';
     GAS_PRICE = 10000000;
 } else if (MODE == 'production') {
-    CHAIN_ID = 2;
-    RPC_ENDPOINT = 'https://rpc2.mainnet.(...)';
-    usersKeysAddress = '0x';
-    usdtAddress = '0x';
-    socialPostAddress = '0x';
+    CHAIN_ID = 418;
+    RPC_ENDPOINT = 'https://rpc.testnet.lachain.network';
+    usersKeysAddress = '0xAc8a31177dA73a1d82976676e4Fa70CF7BB00Fbb';
+    usdtAddress = '0xf6Ca7FD7722b5Fa683788aE56b82df3501B54386';
+    socialPostAddress = '0x6B77F6200b9567B559D106F5cc747Bd3248fF91B';
+    GAS_PRICE = 10000000;
 } else {
     throw new Error('set SOCIAL_MODE to development or production');
 }
