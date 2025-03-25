@@ -23,7 +23,7 @@ const SignInWalletButton = ({
   const { signInWithWallet } = useSignInWithWallet();
 
   return (
-    <button
+    <button 
       className="text-primary font-bold py-3 px-6 rounded-md text-center border border-primary flex items-center justify-center"
       onClick={() => signInWithWallet(saveUserWallet)}
     >
@@ -37,9 +37,11 @@ const SignInButton = () => {
   const { signInWithGoogle } = useSignInWithGoogle();
 
   return (
-    <button
+    <button data-cy="Sign in with Google" type="button"
+    
       className="text-primary font-bold py-3 px-6 rounded-md text-center border border-primary flex items-center justify-center"
       onClick={signInWithGoogle}
+      
     >
       <Image
         src={googleImg}
@@ -48,7 +50,7 @@ const SignInButton = () => {
         height={20}
         className="mr-2"
       />
-      <span>Sign in with Google</span>
+      <span >Sign in with Google</span>
     </button>
   );
 };
