@@ -1,4 +1,4 @@
-/*const { defineConfig } = require('cypress')
+const { defineConfig } = require('cypress')
 const { GoogleSocialLogin } = require('cypress-social-logins')
 
 module.exports = defineConfig({
@@ -12,9 +12,9 @@ module.exports = defineConfig({
       return config;
     }
   },
-})*/
+})
 
-const { defineConfig } = require('cypress');
+/*const { defineConfig } = require('cypress');
 const { GoogleSocialLogin } = require('cypress-social-logins');
 
 module.exports = defineConfig({
@@ -25,5 +25,5 @@ module.exports = defineConfig({
       return config;
     },
   },
-});
+});*/
 
