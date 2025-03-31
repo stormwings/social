@@ -1,7 +1,7 @@
 describe('Test de Login con Google', () => {
   it('Verifica que el usuario pueda iniciar sesión y sea redirigido correctamente', () => {
 
-    cy.visit('/');
+    cy.visit('http://localhost:3000/');
     
     cy.contains('Start').click()
     
