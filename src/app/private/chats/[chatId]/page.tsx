@@ -1,22 +1,46 @@
 "use client";
 
-import { useUserData, useChatMessages, useChatParticipant, useSendMessage } from "@/lib/hooks";
+import {
+  useUserData,
+  useChatMessages,
+  useChatParticipant,
+  useSendMessage,
+} from "@/lib/hooks";
 
 import TopbarMedia from "@/components/TopbarMedia";
-import ProfilePicture from "@/components/ProfilePicture";
+import ProfilePicture from "@/components/smart/ProfilePicture";
 
 import { convertTimestampToDate } from "@/lib/utils";
 
-export default function ChatRoom({ params }: { params: { chatId: string } }) {
+export default function UserChatRoom({
+  params,
+}: {
+  params: { chatId: string };
+}) {
   const chatId = params.chatId;
   const { user, ethereumAddress } = useUserData();
   const messages = useChatMessages(chatId);
-  const { username: otherParticipantUsername, address: otherParticipantAddress } = useChatParticipant(chatId, user);
-  const { newMessage, setNewMessage, sendMessage } = useSendMessage(chatId, user);
+  const {
+    username: otherParticipantUsername,
+    address: otherParticipantAddress,
+  } = useChatParticipant(chatId, user);
+  const { newMessage, setNewMessage, sendMessage } = useSendMessage(
+    chatId,
+    user
+  );
 
-  const MyPicture = user && ethereumAddress ? <ProfilePicture userAddress={ethereumAddress} /> : <></>;
+  const MyPicture =
+    user && ethereumAddress ? (
+      <ProfilePicture userAddress={ethereumAddress} />
+    ) : (
+      <></>
+    );
   const ReceptorPicture =
-    otherParticipantUsername && otherParticipantAddress ? <ProfilePicture userAddress={otherParticipantAddress} /> : <></>;
+    otherParticipantUsername && otherParticipantAddress ? (
+      <ProfilePicture userAddress={otherParticipantAddress} />
+    ) : (
+      <></>
+    );
 
   return (
     <div className="min-h-screen">
@@ -29,20 +53,26 @@ export default function ChatRoom({ params }: { params: { chatId: string } }) {
 
             return isSender ? (
               <div key={message.id} className="flex items-end justify-end mb-4">
-                <div className="bg-[#FF4D24] rounded-lg rounded-tr-none max-w-xs px-4 py-2">
+                <div className="bg-gray-600 rounded-lg rounded-tr-none max-w-xs px-4 py-2">
                   <p className="text-white">{message.text}</p>
                   <p className="text-white text-xs mt-1">
                     {convertTimestampToDate(message?.timestamp?.seconds)}
                   </p>
                 </div>
-                <div className="flex items-center justify-center rounded-lg ml-3">{MyPicture}</div>
+                <div className="flex items-center justify-center rounded-lg ml-3">
+                  {MyPicture}
+                </div>
               </div>
             ) : (
               <div key={message.id} className="flex items-center mb-4">
-                <div className="mr-3 w-12 h-12 rounded-full overflow-hidden">{ReceptorPicture}</div>
-                <div className="bg-[#FEF1F4] rounded-lg rounded-tl-none max-w-xs px-4 py-2">
+                <div className="mr-3 w-12 h-12 rounded-full overflow-hidden">
+                  {ReceptorPicture}
+                </div>
+                <div className="bg-gray-200 rounded-lg rounded-tl-none max-w-xs px-4 py-2">
                   <p className="text-black">{message.text}</p>
-                  <p className="text-gray-400 text-xs mt-1">{convertTimestampToDate(message?.timestamp?.seconds)}</p>
+                  <p className="text-gray-400 text-xs mt-1">
+                    {convertTimestampToDate(message?.timestamp?.seconds)}
+                  </p>
                 </div>
               </div>
             );
@@ -57,7 +87,10 @@ export default function ChatRoom({ params }: { params: { chatId: string } }) {
             rows={4}
             className="w-full p-2 rounded border"
           ></textarea>
-          <button onClick={sendMessage} className="mt-2 bg-[#FF4D24] text-white py-2 px-4 rounded">
+          <button
+            onClick={sendMessage}
+            className="mt-2 bg-gray-600 text-white py-2 px-4 rounded"
+          >
             Send
           </button>
         </div>

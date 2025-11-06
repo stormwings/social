@@ -5,7 +5,7 @@ import { CurrencyDollarIcon } from "@heroicons/react/24/outline";
 
 import Link from "next/link";
 
-import ProfilePicture from "@/components/ProfilePicture";
+import ProfilePicture from "@/components/smart/ProfilePicture";
 import Topbar from "@/components/Topbar";
 
 export default function Account() {
@@ -27,7 +27,8 @@ export default function Account() {
           <div>
             <h2 className="font-semibold text-lg">@{userData?.username}</h2>
             <p className="text-black-500 mb-1 text-xs">
-              {userData?.holders} {userData?.holders === 1 ? "holder" : "holders"}
+              {userData?.holders}{" "}
+              {userData?.holders === 1 ? "holder" : "holders"}
             </p>
             <p className="text-gray-600 text-xs">
               {usdtBalance}
