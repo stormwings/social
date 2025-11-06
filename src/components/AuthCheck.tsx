@@ -14,9 +14,11 @@ export default function AuthCheck({ children, fallback }: IAuthCheckProps) {
     return <>{children}</>;
   }
 
-  return fallback || (
-    <Link href="/login" data-testid="auth-check-login">
-      You must be signed in
-    </Link>
+  return (
+    fallback || (
+      <Link href="/login" data-testid="auth-check-login">
+        You must be signed in
+      </Link>
+    )
   );
 }

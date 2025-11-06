@@ -31,7 +31,9 @@ function RestrictedPostDetail() {
               </div>
             </div>
             <h2 className="text-xl font-bold mb-4 mt-6">
-              {isProfileView ? nameProfileSelected || "User Account" : "See more content"}
+              {isProfileView
+                ? nameProfileSelected || "User Account"
+                : "See more content"}
             </h2>
             <p className="text-sm text-center mb-16">
               {isProfileView
@@ -44,7 +46,9 @@ function RestrictedPostDetail() {
               </Link>
               <p className="mb-1 text-center">Already have an account?</p>
               <Link href="/login">
-                <button className="w-full cursor-pointer text-center">Log In</button>
+                <button className="w-full cursor-pointer text-center">
+                  Log In
+                </button>
               </Link>
             </div>
           </div>

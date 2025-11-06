@@ -4,12 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
-  { href: "/private/home", label: "Home" },
-  { href: "/private/feed", label: "Trades" },
+  { href: "/private/posts", label: "Create" },
   { href: "/private/explorer", label: "Explore" },
-  { href: "/private/posts", label: "Posts" },
+  { href: "/private/home", label: "Home" },
   { href: "/private/chats", label: "Chats" },
-  { href: "/private/account", label: "Account" },
+  { href: "/private/account", label: "Profile" },
 ];
 
 export default function Navbar() {
