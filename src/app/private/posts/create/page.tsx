@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 import AuthCheck from "@/components/AuthCheck";
-import ImageUploader from "@/components/ImageUpload";
+import ImageUploader from "@/components/smart/ImageUpload";
 
 import { useUserData, usePostForm } from "@/lib/hooks";
 
@@ -27,9 +27,8 @@ function PostManager() {
     images,
     handleImageUpload,
     preview,
-    setPreview,
     createPost,
-  } = usePostForm(user, username || '');
+  } = usePostForm(user, username || "");
 
   if (preview) {
     return (
@@ -46,7 +45,10 @@ function PostManager() {
           <Link href="/private/posts">
             <button className="text-gray-500">Cancel</button>
           </Link>
-          <button className="text-white bg-gray-600 py-2 px-4 rounded-full" type="submit">
+          <button
+            className="text-white bg-gray-600 py-2 px-4 rounded-full"
+            type="submit"
+          >
             Publish
           </button>
         </div>
@@ -57,7 +59,9 @@ function PostManager() {
             rows={6}
             placeholder="Write your post content here..."
           />
-          {errors.content && <span className="text-gray-500">This field is required</span>}
+          {errors.content && (
+            <span className="text-gray-500">This field is required</span>
+          )}
 
           {images.map((img, idx) => (
             <Image
@@ -71,7 +75,9 @@ function PostManager() {
           ))}
 
           <div className="flex justify-between items-center mt-2">
-            <span className="text-gray-500 text-sm">Character limit: 0/255</span>
+            <span className="text-gray-500 text-sm">
+              Character limit: 0/255
+            </span>
             <div className="flex space-x-2">
               {!preview && <ImageUploader onUpload={handleImageUpload} />}
             </div>
