@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import {
   doc,
@@ -9,7 +9,11 @@ import {
   serverTimestamp,
   updateDoc,
   setDoc,
+  DocumentReference,
+  writeBatch,
+  increment,
 } from "firebase/firestore";
+import { useDocument } from "react-firebase-hooks/firestore";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase";
 import { signInWithPopup } from "firebase/auth";
@@ -387,25 +391,29 @@ export const useUsdtBalance = ({ ethereumAddress }: any) => {
 
   useEffect(() => {
     if (!ethereumAddress) return;
+    let mounted = true;
 
-    const checkUsdtBalance = async () => {
+    (async () => {
       const provider = new ethers.JsonRpcProvider(RPC_ENDPOINT);
       const contract = new ethers.Contract(
         USDT_CONTRACT_ADDRESS,
         [
-          // You need the ABI definition for the balanceOf function (standard ERC20 function)
-          "function balanceOf(address owner) view returns (uint256)",
+          "function balanceOf(address) view returns (uint256)",
+          "function decimals() view returns (uint8)",
         ],
         provider
       );
-      const balance = await contract.balanceOf(ethereumAddress);
 
-      setUsdtBalance(ethers.formatEther(balance)); // Convert Wei to Ether (or USDT in this case)
-    };
+      const dec = Number(await contract.decimals());
+      const update = async () => {
+        const raw = await contract.balanceOf(ethereumAddress);
+        if (mounted) setUsdtBalance(ethers.formatUnits(raw, dec));
+      };
 
-    const intervalId = setInterval(checkUsdtBalance, 5000); // Check every 5 seconds
-
-    return () => clearInterval(intervalId);
+      await update();
+      const id = setInterval(update, 5000);
+      return () => { mounted = false; clearInterval(id); };
+    })();
   }, [ethereumAddress]);
 
   return usdtBalance;
@@ -820,4 +828,140 @@ export function useUploadFile(): IUseUploadFile {
   };
 
   return { uploadFile, uploading, progress };
+}
+
+export function useUserProfileAndPostsByUsername(subjectUsername: string | null) {
+  const [userProfile, setUserProfile] = useState<DocumentData | null>(null);
+  const [userUID, setUserUID] = useState<string | null>(null);
+  const [posts, setPosts] = useState<DocumentData[] | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState<boolean>(false);
+  const [loadingPosts, setLoadingPosts] = useState<boolean>(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!subjectUsername) return;
+      setLoadingProfile(true);
+      try {
+        const usersRef = query(collection(db, "users"), where("username", "==", subjectUsername));
+        const userSnapshot = await getDocs(usersRef);
+        const doc0 = userSnapshot.docs[0];
+        if (doc0 && !cancelled) {
+          setUserUID(doc0.id);
+          setUserProfile(doc0.data());
+        } else if (!cancelled) {
+          setUserUID(null);
+          setUserProfile(null);
+        }
+      } finally {
+        if (!cancelled) setLoadingProfile(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [subjectUsername]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!userUID || posts !== null) return;
+      setLoadingPosts(true);
+      try {
+        const postsRef = collection(db, "users", userUID, "posts");
+        const q = query(postsRef, orderBy("createdAt"));
+        const qs = await getDocs(q);
+        const data = qs.docs.map(d => ({ ...d.data(), postId: d.id }));
+        if (!cancelled) setPosts(data);
+      } finally {
+        if (!cancelled) setLoadingPosts(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [userUID, posts]);
+
+  return { userProfile, userUID, posts, loadingProfile, loadingPosts };
+}
+
+export function usePostById(posts: DocumentData[] | null, postId: string | null) {
+  return useMemo(() => {
+    if (!posts || !postId) return null;
+    return posts.find(p => p.postId === postId) ?? null;
+  }, [posts, postId]);
+}
+
+export function usePostRef(
+  uid?: string | null,
+  postId?: string | null
+): DocumentReference | null {
+  return useMemo(() => {
+    if (!uid || !postId) return null;
+    return doc(db, "users", uid, "posts", postId);
+  }, [uid, postId]);
+}
+
+export function useHeart(postRef: DocumentReference | null) {
+  const uid = auth.currentUser?.uid ?? null;
+
+  const heartRef = useMemo(
+    () => (postRef && uid ? doc(postRef, "hearts", uid) : null),
+    [postRef, uid]
+  );
+
+  const [heartDoc] = useDocument(heartRef as any);
+  const hasHeart = !!heartDoc?.exists();
+  const enabled = !!uid && !!postRef;
+
+  const toggleHeart = async () => {
+    if (!enabled) return;
+    const batch = writeBatch(db);
+    batch.update(postRef!, { heartCount: increment(hasHeart ? -1 : 1) });
+    if (heartRef) {
+      hasHeart ? batch.delete(heartRef) : batch.set(heartRef, { uid });
+    }
+    await batch.commit();
+  };
+
+  return { hasHeart, toggleHeart, enabled };
+}
+
+export function useUserProfileByAddress(subjectAddress: string | null) {
+  const [userProfile, setUserProfile] = useState<DocumentData | null>(null);
+  const [userUID, setUserUID] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!subjectAddress) {
+        setUserUID(null);
+        setUserProfile(null);
+        return;
+      }
+      const usersRef = query(
+        collection(db, "users"),
+        where("ethereumAddress", "==", subjectAddress)
+      );
+      const snap = await getDocs(usersRef);
+      const d0 = snap.docs[0];
+      if (!cancelled) {
+        if (d0) {
+          setUserUID(d0.id);
+          setUserProfile(d0.data());
+        } else {
+          setUserUID(null);
+          setUserProfile(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [subjectAddress]);
+
+  return { userProfile, userUID };
+}
+
+export function useUpdateUserPhoto() {
+  const updateUserPhoto = async (uid: string, photoURL: string) => {
+    await updateDoc(doc(db, "users", uid), { photoURL });
+  };
+  return { updateUserPhoto };
 }
