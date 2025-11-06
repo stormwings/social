@@ -1,0 +1,26 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+  
+  	// Profile picture updates
+  	match /profilePictures/{userId}/{allPaths=**} {
+      allow write: if request.auth != null && request.auth.uid == userId;
+      // Allow anyone to read files from any user's directory
+      allow read
+    }
+    
+    // Users' directory, e.g., uploads/userUID/filename.ext
+    match /uploads/{userId}/{allPaths=**} {
+      // Allow a user to upload to their directory
+      allow write: if request.auth != null && request.auth.uid == userId;
+      // Allow anyone to read files from any user's directory
+      allow read;
+    }
+
+    // By default, deny all other writes and reads
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

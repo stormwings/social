@@ -1,0 +1,257 @@
+import { ethers } from 'ethers';
+import toast from 'react-hot-toast';
+
+import * as dappParams from '@/lib/dappParams';
+
+import contractAbi from './../usersKeysAbi';
+import usdtTokenAbi from '../usdtTokenAbi';
+
+const getSigner = async () => {
+  const browserProvider = new ethers.BrowserProvider((window as any).ethereum);
+  const signer = await browserProvider.getSigner();  
+
+  return signer;
+}
+
+type IHandleBuyKey = {
+  user: any, // (pending) build user object
+  ethereumAddress: string,
+  subjectUID: string,
+  numberOfKeys: string | number, // (pending) normalize
+  useWallet?: boolean,
+}
+
+export const handleBuyKey = async ({
+  user,
+  ethereumAddress,
+  subjectUID,
+  numberOfKeys,
+  useWallet = false,
+}: IHandleBuyKey) => {
+  if (!user || !ethereumAddress) return;
+
+  const token = await user.getIdToken();
+
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+
+  if (useWallet) {
+    const response = await fetch("/api/trade/wallet", {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify({
+        type: "buy",
+        subjectUID,
+        amount: numberOfKeys,
+        userAddress: ethereumAddress,
+      }),
+    });
+
+    const tradeInfo = await response.json();
+
+    const signer = await getSigner();
+
+    const usdtContract = new ethers.Contract(
+      dappParams.usdtAddress,
+      usdtTokenAbi,
+      signer
+    );
+
+    const usersKeysCContract = new ethers.Contract(
+      dappParams.usersKeysAddress,
+      contractAbi,
+      signer
+    );
+
+    const userUsdtBalance = await usdtContract.balanceOf(
+      ethereumAddress
+    );
+    
+    const usdtPriceForKeys = await usersKeysCContract.getBuyPrice(
+      tradeInfo.subjectKey,
+      numberOfKeys
+    );
+
+    if (userUsdtBalance < usdtPriceForKeys) {
+      // (refactor) We will handle this at the end in the component that calls this function so you must send the response to the component whether correct or incorrect to identify
+      toast.error("User USDT balance too low " + ethereumAddress + " " + ethers.formatEther(userUsdtBalance) + " < " + ethers.formatEther(usdtPriceForKeys));
+      return;
+    }
+
+    const currentAllowance = await usdtContract.allowance(
+      ethereumAddress,
+      dappParams.usersKeysAddress
+    );
+
+    if (currentAllowance < usdtPriceForKeys) {
+      const approveTx = await usdtContract.approve(
+        dappParams.usersKeysAddress,
+        usdtPriceForKeys * BigInt(10)
+      );
+
+      await approveTx.wait();
+    }
+
+    toast.success(
+      `Permiso de Compra aprobado con éxito.`
+    );
+
+    const tx = await usersKeysCContract.buyKeys(
+      tradeInfo.subjectKey,
+      numberOfKeys,
+    );
+
+    await tx.wait();
+
+    const responseConfirmation = await fetch("/api/trade/wallet/confirm", {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify({
+        ethereumAddress,
+        subjectUID,
+        amount: numberOfKeys,
+        userUID: user.uid,
+        txHash: tx.hash,
+        tradeType: "buy",
+      }),
+    });
+  
+    const responseData = await responseConfirmation.json();
+
+    // (refactor) We will handle this at the end in the component that calls this function so you must send the response to the component whether correct or incorrect to identify
+    toast.success(
+      `Operación de compra realizada con éxito. Hash de transacción: ${tx.hash}`
+    );
+
+    return responseData;
+  } else {
+    const response = await fetch('/api/trade', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({
+        type: 'buy',
+        subjectUID,
+        amount: numberOfKeys,
+        ethereumAddress,
+      }),
+    });
+
+    const responseData = await response.json();
+
+    // (refactor) We will handle this at the end in the component that calls this function so you must send the response to the component whether correct or incorrect to identify
+    if (response.ok) {
+      toast.success('Purchase successful');
+    } else {
+      toast.error(responseData.message || "Failed to buy key");
+    }
+
+    return responseData;
+  }
+}
+
+export const handleSellKey = async ({
+  user,
+  ethereumAddress,
+  subjectUID,
+  numberOfKeys,
+  useWallet = false,
+}: IHandleBuyKey) => {
+  if (!user || !ethereumAddress) return;
+
+  const token = await user.getIdToken();
+
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+
+  if (useWallet) {
+    const response = await fetch("/api/trade/wallet", {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify({
+        type: "sell",
+        subjectUID,
+        amount: numberOfKeys,
+        userAddress: ethereumAddress,
+      }),
+    });
+
+    const tradeInfo = await response.json();
+
+    if (!tradeInfo.ok) {
+      // (refactor) We will handle this at the end in the component that calls this function so you must send the response to the component whether correct or incorrect to identify
+      toast.error("Operation not allowed");
+      return;
+    }
+
+    const signer = await getSigner();
+
+    const usersKeysCContract = new ethers.Contract(
+      dappParams.usersKeysAddress,
+      contractAbi,
+      signer
+    );
+
+    const tx = await usersKeysCContract.sellKeys(
+      tradeInfo.subjectKey,
+      tradeInfo.keysToSell,
+    );
+
+    await tx.wait();
+
+    toast.success(`Venta realizada con éxito. Hash de transacción: ${tx.hash}`);
+
+    const confirmationResponse = await fetch("/api/trade/wallet/confirm", {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify({
+        ethereumAddress,
+        subjectUID,
+        amount: numberOfKeys,
+        userUID: user.uid,
+        txHash: tx.hash,
+        tradeType: "sell",
+      }),
+    });
+
+    const confirmationData = await confirmationResponse.json();
+
+    // (refactor) We will handle this at the end in the component that calls this function so you must send the response to the component whether correct or incorrect to identify
+    if (response.ok) {
+      toast.success('Sell successful');
+    } else {
+      toast.error(confirmationData.message || "Failed to buy key");
+    }
+
+    return {
+      success: true,
+      message: "Venta completada correctamente",
+      txHash: tx.hash,
+      data: confirmationData
+    };
+  } else {
+    const response = await fetch('/api/trade', {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({
+        type: 'sell',
+        subjectUID,
+        amount: numberOfKeys,
+      }),
+    });
+
+    const responseData = await response.json();
+
+    // (refactor) We will handle this at the end in the component that calls this function so you must send the response to the component whether correct or incorrect to identify
+    if (response.ok) {
+      toast.success('Sell success!!');
+    } else {
+      toast.error(responseData.message || "Failed to sell key");
+    }
+
+    return responseData;
+  }
+}

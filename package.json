@@ -1,0 +1,50 @@
+{
+  "name": "social",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "engines": {
+    "npm": ">=9.6.7",
+    "node": ">=18.17.1"
+  },
+  "dependencies": {
+    "@headlessui/react": "^1.7.17",
+    "@heroicons/react": "^2.0.18",
+    "axios": "^1.5.0",
+    "bufferutil": "^4.0.9",
+    "ethers": "6",
+    "firebase": "^10.3.1",
+    "firebase-admin": "^11.10.1",
+    "geist": "^1.2.2",
+    "headlessui": "^0.0.0",
+    "heroicons": "^2.0.18",
+    "lottie-web": "^5.12.2",
+    "minidenticons": "^4.2.0",
+    "next": "^13.4.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-firebase-hooks": "^5.1.1",
+    "react-hook-form": "^7.46.1",
+    "react-hot-toast": "^2.4.1",
+    "react-markdown": "^8.0.7",
+    "react-qr-code": "^2.0.12",
+    "utf-8-validate": "^6.0.5",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^17.0.31",
+    "@types/react": "^18.0.9",
+    "@types/react-dom": "^18.0.3",
+    "autoprefixer": "^10.4.15",
+    "eslint": "^8.15.0",
+    "eslint-config-next": "^12.1.6",
+    "postcss": "^8.4.29",
+    "tailwindcss": "^3.3.3",
+    "typescript": "^5.0.4"
+  }
+}
