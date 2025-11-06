@@ -7,7 +7,9 @@ const PostImages = ({ images }: IPostImagesProps) => {
 
   return (
     <div
-      className={`post-image-container ${images.length === 1 ? "single" : "multiple"}`}
+      className={`post-image-container ${
+        images.length === 1 ? "single" : "multiple"
+      }`}
       data-testid={`post-image-container-${images.length}`}
     >
       {images.length === 1 && (
@@ -20,7 +22,10 @@ const PostImages = ({ images }: IPostImagesProps) => {
       )}
 
       {images.length === 2 && (
-        <div className="flex justify-between my-2" data-testid="post-image-container-double">
+        <div
+          className="flex justify-between my-2"
+          data-testid="post-image-container-double"
+        >
           {images.map((img, idx) => (
             <img
               key={idx}
@@ -34,7 +39,10 @@ const PostImages = ({ images }: IPostImagesProps) => {
       )}
 
       {images.length === 3 && (
-        <div className="flex my-2 rounded-md" data-testid="post-image-container-triple">
+        <div
+          className="flex my-2 rounded-md"
+          data-testid="post-image-container-triple"
+        >
           <img
             src={images[0]}
             alt="Uploaded content 1"
@@ -59,7 +67,10 @@ const PostImages = ({ images }: IPostImagesProps) => {
       )}
 
       {images.length >= 4 && (
-        <div className="grid grid-cols-2 gap-2 my-2" data-testid="post-image-container-multiple">
+        <div
+          className="grid grid-cols-2 gap-2 my-2"
+          data-testid="post-image-container-multiple"
+        >
           {images.slice(0, 4).map((img, idx) => (
             <img
               key={idx}

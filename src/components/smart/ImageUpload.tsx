@@ -1,12 +1,15 @@
 import { useRef, useState } from "react";
 import { PhotoIcon } from "@heroicons/react/24/outline";
 
-import Loader from "@/components/Loader";
 import { useUploadFile } from "@/lib/hooks";
 import { useUserData } from "@/lib/hooks";
 
 interface IImageUploaderProps {
   onUpload: (url: string) => void;
+}
+
+function Loader({ show }: any) {
+  return show ? <div className="loader"></div> : null;
 }
 
 export default function ImageUploader({ onUpload }: IImageUploaderProps) {
@@ -31,17 +34,31 @@ export default function ImageUploader({ onUpload }: IImageUploaderProps) {
   };
 
   return (
-    <div className="box flex items-center justify-center" data-testid="image-uploader">
+    <div
+      className="box flex items-center justify-center"
+      data-testid="image-uploader"
+    >
       <Loader show={uploading} />
       {uploading && <h3 data-testid="upload-progress">{progress}%</h3>}
       {error && <p className="text-red-500 text-sm">{error}</p>}
 
       {!uploading && (
         <>
-          <button className="text-gray-500" onClick={() => fileInputRef.current?.click()} data-testid="upload-button">
+          <button
+            className="text-gray-500"
+            onClick={() => fileInputRef.current?.click()}
+            data-testid="upload-button"
+          >
             <PhotoIcon className="h-6 w-6" />
           </button>
-          <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/png,image/jpeg,image/gif" className="hidden" data-testid="file-input" />
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/png,image/jpeg,image/gif"
+            className="hidden"
+            data-testid="file-input"
+          />
         </>
       )}
     </div>

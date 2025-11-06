@@ -14,10 +14,15 @@ interface BuyKeyModalProps {
   subjectUID: string;
 }
 
-export function BuyKeyModal({ isOpen, setIsOpen, keyAddress, subjectUID }: BuyKeyModalProps) {
+export function BuyKeyModal({
+  isOpen,
+  setIsOpen,
+  keyAddress,
+  subjectUID,
+}: BuyKeyModalProps) {
   const [numberOfKeys, setNumberOfKeys] = useState(1);
   const { userData, user, ethereumAddress } = useUserData();
-  
+
   const usdtBalance = useUsdtBalance({ ethereumAddress });
   const buyPrice = useBuyPrice({ ethereumAddress: keyAddress });
 
@@ -41,7 +46,11 @@ export function BuyKeyModal({ isOpen, setIsOpen, keyAddress, subjectUID }: BuyKe
 
   return (
     <Transition.Root show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-10" onClose={() => setIsOpen(false)}>
+      <Dialog
+        as="div"
+        className="relative z-10"
+        onClose={() => setIsOpen(false)}
+      >
         <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
           <div className="flex min-h-full items-end justify-center p-4 text-center">
             <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
@@ -57,28 +66,44 @@ export function BuyKeyModal({ isOpen, setIsOpen, keyAddress, subjectUID }: BuyKe
               </div>
               <div className="sm:flex sm:items-start mb-4">
                 <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
-                  <Dialog.Title className="text-base font-semibold text-gray-900" data-testid="dialog-title">
+                  <Dialog.Title
+                    className="text-base font-semibold text-gray-900"
+                    data-testid="dialog-title"
+                  >
                     Buy Key
                   </Dialog.Title>
                   <div className="mt-2">
-                    <p className="text-sm text-gray-500" data-testid="key-address">
+                    <p
+                      className="text-sm text-gray-500"
+                      data-testid="key-address"
+                    >
                       Address: {keyAddress}
                     </p>
-                    <p className="text-sm text-gray-500" data-testid="buy-price">
+                    <p
+                      className="text-sm text-gray-500"
+                      data-testid="buy-price"
+                    >
                       Key price: {buyPrice} USDT
-                    </p> 
-                    <p className="text-sm text-gray-500 mb-4" data-testid="stablecoin-balance">
+                    </p>
+                    <p
+                      className="text-sm text-gray-500 mb-4"
+                      data-testid="stablecoin-balance"
+                    >
                       USDT Balance: {usdtBalance} USDT
-                    </p> 
-                    
+                    </p>
+
                     <div className="flex items-center justify-center gap-2">
                       <button
-                        onClick={() => setNumberOfKeys((prev) => Math.max(1, prev - 1))}
+                        onClick={() =>
+                          setNumberOfKeys((prev) => Math.max(1, prev - 1))
+                        }
                         className="px-3 py-1 text-gray-500 bg-gray-200 rounded-md"
                       >
                         -
                       </button>
-                      <span className="text-lg font-semibold">{numberOfKeys}</span>
+                      <span className="text-lg font-semibold">
+                        {numberOfKeys}
+                      </span>
                       <button
                         onClick={() => setNumberOfKeys((prev) => prev + 1)}
                         className="px-3 py-1 text-gray-500 bg-gray-200 rounded-md"
@@ -97,13 +122,7 @@ export function BuyKeyModal({ isOpen, setIsOpen, keyAddress, subjectUID }: BuyKe
                   onClick={onConfirmBuyKey}
                   data-testid="complete-buy-button"
                 >
-                  {isProcessing ? (
-                    <>
-                      {"Processing..."}
-                    </>
-                  ) : (
-                    "Complete Purchase"
-                  )}
+                  {isProcessing ? <>{"Processing..."}</> : "Complete Purchase"}
                 </button>
                 {!isProcessing && (
                   <button
