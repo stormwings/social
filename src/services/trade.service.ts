@@ -2,6 +2,7 @@ import { ethers } from 'ethers';
 import toast from 'react-hot-toast';
 
 import * as dappParams from '@/lib/dappParams';
+import { ENDPOINTS } from '@/lib/apiEndpoints';
 
 import contractAbi from './../usersKeysAbi';
 import usdtTokenAbi from '../usdtTokenAbi';
@@ -38,7 +39,7 @@ export const handleBuyKey = async ({
   };
 
   if (useWallet) {
-    const response = await fetch("/api/trade/wallet", {
+    const response = await fetch(ENDPOINTS.VALIDATE_WALLET_TRADE, {
       method: "POST",
       headers: headers,
       body: JSON.stringify({
@@ -105,7 +106,7 @@ export const handleBuyKey = async ({
 
     await tx.wait();
 
-    const responseConfirmation = await fetch("/api/trade/wallet/confirm", {
+    const responseConfirmation = await fetch(ENDPOINTS.CONFIRM_WALLET_TRADE, {
       method: "POST",
       headers: headers,
       body: JSON.stringify({
@@ -127,7 +128,7 @@ export const handleBuyKey = async ({
 
     return responseData;
   } else {
-    const response = await fetch('/api/trade', {
+    const response = await fetch(ENDPOINTS.EXECUTE_TRADE, {
       method: 'POST',
       headers: headers,
       body: JSON.stringify({
@@ -168,7 +169,7 @@ export const handleSellKey = async ({
   };
 
   if (useWallet) {
-    const response = await fetch("/api/trade/wallet", {
+    const response = await fetch(ENDPOINTS.VALIDATE_WALLET_TRADE, {
       method: "POST",
       headers: headers,
       body: JSON.stringify({
@@ -204,7 +205,7 @@ export const handleSellKey = async ({
 
     toast.success(`Venta realizada con éxito. Hash de transacción: ${tx.hash}`);
 
-    const confirmationResponse = await fetch("/api/trade/wallet/confirm", {
+    const confirmationResponse = await fetch(ENDPOINTS.CONFIRM_WALLET_TRADE, {
       method: "POST",
       headers: headers,
       body: JSON.stringify({
@@ -233,7 +234,7 @@ export const handleSellKey = async ({
       data: confirmationData
     };
   } else {
-    const response = await fetch('/api/trade', {
+    const response = await fetch(ENDPOINTS.EXECUTE_TRADE, {
       method: 'POST',
       headers: headers,
       body: JSON.stringify({

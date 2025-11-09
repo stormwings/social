@@ -43,6 +43,7 @@ import {
 import { cutString } from "./utils";
 import toast from "react-hot-toast";
 import { useForm } from "react-hook-form";
+import { ENDPOINTS } from "@/lib/apiEndpoints";
 
 export function useUserData(customId: string | null = null) {
   const [user] = useAuthState(auth);
@@ -430,7 +431,7 @@ export function useSubmitUsername(user: any | null, userWallet: string | null) {
     try {
       const token = await user.getIdToken();
       const response = await axios.post(
-        userWallet ? "/api/setup/wallet" : "/api/setup",
+        userWallet ? ENDPOINTS.CREATE_WITH_EXISTING_WALLET : ENDPOINTS.CREATE_WITH_GENERATED_WALLET,
         { username, address: userWallet },
         {
           headers: {
@@ -517,7 +518,7 @@ export function useSignInWithWallet() {
       const signature = await signer.signMessage(message);
       const address = await signer.getAddress();
 
-      const response = await axios.post("/api/token", {
+      const response = await axios.post(ENDPOINTS.VERIFY_WALLET, {
         address,
         signature,
         message,
@@ -736,7 +737,7 @@ export function useWithdraw(user: any) {
     setIsProcessing(true);
     try {
       const token = await user.getIdToken();
-      const response = await axios.post("/api/withdraw", data, {
+      const response = await axios.post(ENDPOINTS.WITHDRAW_USDT, data, {
         headers: { Authorization: `Bearer ${token}` },
       });
       toast.success(response.data.message);
