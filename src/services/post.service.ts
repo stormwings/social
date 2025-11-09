@@ -1,3 +1,5 @@
+import { ENDPOINTS } from '@/lib/apiEndpoints';
+
 export const handleMintPost = async ({
   // user,
   // userUID,
@@ -31,7 +33,7 @@ export const handleMintPost = async ({
   //   (e: any) => e.event === "PostCreated"
   // );
 
-  // await fetch('/api/post/mint', {
+  // await fetch(ENDPOINTS.MINT_POST_NFT, {
   //   method: 'POST',
   //   headers: headers,
   //   body: JSON.stringify({
