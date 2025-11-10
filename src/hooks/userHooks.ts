@@ -6,8 +6,10 @@ import {
   DocumentData,
   Timestamp,
 } from "firebase/firestore";
+import toast from "react-hot-toast";
 import { auth, db } from "@/lib/firebase";
 import { userService } from "@/services";
+import { logger } from "@/lib/logger";
 
 export function useUserData(customId: string | null = null) {
   const [user] = useAuthState(auth);
@@ -24,13 +26,20 @@ export function useUserData(customId: string | null = null) {
 
     if (user) {
       const ref = doc(db, "users", customId ? customId : user.uid);
-      unsubscribe = onSnapshot(ref, (docSnapshot) => {
-        setUserData(docSnapshot.data() || {});
-        setUsername(docSnapshot.data()?.username);
-        setEthereumAddress(docSnapshot.data()?.ethereumAddress);
-        setUserProfile(docSnapshot.data() || null);
-        setSubjectEthereumAddress(docSnapshot.data()?.ethereumAddress);
-      });
+      unsubscribe = onSnapshot(
+        ref,
+        (docSnapshot) => {
+          setUserData(docSnapshot.data() || {});
+          setUsername(docSnapshot.data()?.username);
+          setEthereumAddress(docSnapshot.data()?.ethereumAddress);
+          setUserProfile(docSnapshot.data() || null);
+          setSubjectEthereumAddress(docSnapshot.data()?.ethereumAddress);
+        },
+        (error) => {
+          logger.error("Error listening to user data", error, { uid: user.uid });
+          toast.error("Failed to load user data");
+        }
+      );
     } else {
       setUsername(null);
       setEthereumAddress(null);
@@ -64,7 +73,8 @@ export const useUserPosts = (user: any) => {
         const postData = await userService.getUserPosts(user.uid);
         setPosts(postData);
       } catch (error) {
-        console.error("Error fetching user posts:", error);
+        logger.error("Error fetching user posts", error, { uid: user?.uid });
+        toast.error("Failed to load user posts");
       }
     };
 
@@ -99,7 +109,8 @@ export function useUserProfileByUsername(subjectUsername: string | null) {
           setSubjectEthereumAddress(null);
         }
       } catch (error) {
-        console.error("Error fetching user profile by username:", error);
+        logger.error("Error fetching user profile by username", error, { subjectUsername });
+        toast.error("Failed to load user profile");
       }
     }
     fetchUserProfile();
@@ -125,7 +136,8 @@ export function useUserProfileByUid(subjectUID: string) {
           setEthereumAddress(profile.ethereumAddress);
         }
       } catch (error) {
-        console.error("Error fetching user profile by UID:", error);
+        logger.error("Error fetching user profile by UID", error, { subjectUID });
+        toast.error("Failed to load user profile");
       }
     }
 
@@ -145,7 +157,8 @@ export const useUserKeys = (user: any) => {
           const keys = await userService.getUserKeys(user.uid);
           setUserKeys(keys);
         } catch (error) {
-          console.error("Error fetching user keys:", error);
+          logger.error("Error fetching user keys", error, { uid: user?.uid });
+          toast.error("Failed to load user keys");
         }
       }
     }
@@ -181,7 +194,8 @@ export const useUsersData = ({
         const fetchedUsers = await userService.getUsers(sortBy, "desc", 100);
         setUsers(fetchedUsers as User[]);
       } catch (error) {
-        console.error("Error fetching users:", error);
+        logger.error("Error fetching users", error, { sortType });
+        toast.error("Failed to load users");
       }
     }
     fetchAllUsers();
@@ -212,7 +226,8 @@ export function useUserProfileAndPostsByUsername(subjectUsername: string | null)
           setUserProfile(null);
         }
       } catch (error) {
-        console.error("Error fetching user profile:", error);
+        logger.error("Error fetching user profile", error, { subjectUsername });
+        toast.error("Failed to load user profile");
       } finally {
         if (!cancelled) setLoadingProfile(false);
       }
@@ -229,7 +244,8 @@ export function useUserProfileAndPostsByUsername(subjectUsername: string | null)
         const data = await userService.getUserPosts(userUID);
         if (!cancelled) setPosts(data);
       } catch (error) {
-        console.error("Error fetching user posts:", error);
+        logger.error("Error fetching user posts", error, { userUID });
+        toast.error("Failed to load user posts");
       } finally {
         if (!cancelled) setLoadingPosts(false);
       }

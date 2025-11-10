@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { commentsService, Comment } from '@/services';
+import { logger } from '@/lib/logger';
 
 // Re-export Comment interface for backward compatibility
 export interface IComment extends Comment {}
@@ -20,7 +22,8 @@ export const useComments = (postId: string, userId: string): useCommentsInterfac
         const commentsData = await commentsService.getCommentsByPostId(postId);
         setComments(commentsData);
       } catch (error) {
-        console.error("Error fetching comments:", error);
+        logger.error("Error fetching comments", error, { postId });
+        toast.error("Failed to load comments");
       }
     };
 
@@ -47,8 +50,10 @@ export const useComments = (postId: string, userId: string): useCommentsInterfac
       };
 
       setComments([...comments, newComment]);
+      toast.success("Comment added!");
     } catch (error) {
-      console.error("Error sending comment:", error);
+      logger.error("Error sending comment", error, { postId });
+      toast.error("Failed to send comment");
     }
   };
 

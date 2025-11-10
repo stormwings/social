@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { auth, db } from "@/lib/firebase";
 import { postService } from "@/services";
+import { logger } from "@/lib/logger";
 
 type Post = {
   id: string;
@@ -28,8 +29,13 @@ export const useKeyedPosts = (userKeys: string[]) => {
         return;
       }
 
-      const posts = await postService.getKeyedPosts(userKeys);
-      setKeyedPosts(posts as Post[]);
+      try {
+        const posts = await postService.getKeyedPosts(userKeys);
+        setKeyedPosts(posts as Post[]);
+      } catch (error) {
+        logger.error("Failed to fetch keyed posts", error, { userKeysCount: userKeys.length });
+        toast.error("Failed to load posts");
+      }
     }
 
     if (userKeys.length > 0) {
@@ -61,7 +67,10 @@ export function usePostForm(user: any, username: string) {
   };
 
   const createPost = async (data: Inputs) => {
-    if (!user) return;
+    if (!user) {
+      toast.error("User not authenticated");
+      return;
+    }
 
     const { content } = data;
 
@@ -76,7 +85,7 @@ export function usePostForm(user: any, username: string) {
       toast.success("Post created!");
       router.push("/private/posts");
     } catch (error) {
-      console.error("Error creating post:", error);
+      logger.error("Error creating post", error, { username });
       toast.error("Failed to create post");
     }
   };
@@ -129,7 +138,7 @@ export function useHeart(postRef: DocumentReference | null) {
     try {
       await postService.toggleHeart(postRef, uid, hasHeart);
     } catch (error) {
-      console.error("Error toggling heart:", error);
+      logger.error("Error toggling heart", error, { postPath: postRef?.path });
       toast.error("Failed to update heart");
     }
   };
