@@ -1,22 +1,31 @@
 import { NextResponse } from 'next/server';
 import { ethers } from 'ethers';
-
 import admin from '@/lib/firebase-admin';
+import { errorResponse, internalError, validateRequiredFields } from '@/lib/api';
+import type { TokenRequest } from '@/lib/api';
 
 export async function POST(request: Request) {
-    const { address, message, signature }  = await request.json();
+  try {
+    const body: TokenRequest = await request.json();
+    const { address, message, signature } = body;
 
-    try {
-        const addressVerified = ethers.verifyMessage(message, signature)
-
-        if (addressVerified.toLowerCase() !== address.toLowerCase()) {
-          return NextResponse.json({ message: "Signature verification failed", error: 400 });
-        }
-
-        const customToken = await admin.auth().createCustomToken(address);
-
-        return NextResponse.json({ token: customToken }, { status: 200 });
-    } catch (error) {
-        return NextResponse.json({ log: error, message: 'Internal Error', error: 101 }, { status: 500 });
+    // Validate required fields
+    if (!validateRequiredFields(body, ['address', 'message', 'signature'])) {
+      return errorResponse('Missing required fields', 400, 400);
     }
+
+    // Verify the signature
+    const addressVerified = ethers.verifyMessage(message, signature);
+
+    if (addressVerified.toLowerCase() !== address.toLowerCase()) {
+      return errorResponse('Signature verification failed', 400, 400);
+    }
+
+    // Create custom token for the verified address
+    const customToken = await admin.auth().createCustomToken(address);
+
+    return NextResponse.json({ token: customToken }, { status: 200 });
+  } catch (error) {
+    return internalError(error);
+  }
 }

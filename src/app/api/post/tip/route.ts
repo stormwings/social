@@ -1,36 +1,37 @@
 import { NextResponse } from 'next/server';
-import { headers } from 'next/headers';
 import { firestore } from 'firebase-admin';
-
 import admin from '@/lib/firebase-admin';
+import {
+  authenticateRequest,
+  authenticationError,
+  errorResponse,
+  internalError,
+  isPositiveNumber,
+  validateRequiredFields,
+} from '@/lib/api';
+import type { TipRequest } from '@/lib/api';
 
 export async function POST(request: Request) {
-  const {
-    fromUser,
-    toUser,
-    amount,
-    transactionHash,
-  } = await request.json();
-
-  if (!fromUser || !toUser || !amount || amount <= 0 || !transactionHash) {
-    return NextResponse.json({ message: 'Invalid request parameters.', error: 103 });
-  }
-
-  const headersList = headers()
-  const authHeader = headersList.get('Authorization')
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ message: "Not authenticated", error: 101 });
-  }
-
-  const token = authHeader.split('Bearer ')[1];
-  const decodedToken = await admin.auth().verifyIdToken(token);
-
-  if (!decodedToken) {
-      return NextResponse.json({ message: "Not authenticated", error: 101 });
+  // Authenticate user
+  const user = await authenticateRequest();
+  if (!user) {
+    return authenticationError();
   }
 
   try {
+    const body: TipRequest = await request.json();
+    const { fromUser, toUser, amount, transactionHash } = body;
+
+    // Validate required fields
+    if (!validateRequiredFields(body, ['fromUser', 'toUser', 'amount', 'transactionHash'])) {
+      return errorResponse('Missing required fields', 103, 400);
+    }
+
+    // Validate amount is positive
+    if (!isPositiveNumber(amount)) {
+      return errorResponse('Invalid request parameters.', 103, 400);
+    }
+
     const db = admin.firestore();
     const tipRef = db.collection('tips').doc();
 
@@ -39,11 +40,14 @@ export async function POST(request: Request) {
       toUser,
       amount,
       timestamp: firestore.FieldValue.serverTimestamp(),
-      transactionHash
+      transactionHash,
     });
 
-    return NextResponse.json({ message: 'Tip registered successfully.', id: tipRef.id });
+    return NextResponse.json(
+      { message: 'Tip registered successfully.', id: tipRef.id },
+      { status: 200 }
+    );
   } catch (error) {
-    return NextResponse.json({ message: "Internal Server Error", error: error });
+    return internalError(error);
   }
 }
