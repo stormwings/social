@@ -18,6 +18,7 @@ import {
   DocumentData,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { logger } from "@/lib/logger";
 
 /**
  * Interface for user profile data
@@ -40,9 +41,14 @@ export interface UserProfile {
  * @returns User data or null if not found
  */
 export async function getUserByUid(uid: string): Promise<DocumentData | null> {
-  const userDocRef = doc(db, "users", uid);
-  const userSnapshot = await getDoc(userDocRef);
-  return userSnapshot.exists() ? userSnapshot.data() : null;
+  try {
+    const userDocRef = doc(db, "users", uid);
+    const userSnapshot = await getDoc(userDocRef);
+    return userSnapshot.exists() ? userSnapshot.data() : null;
+  } catch (error) {
+    logger.error("Failed to get user by UID", error, { uid });
+    throw error;
+  }
 }
 
 /**
@@ -54,21 +60,26 @@ export async function getUserByUid(uid: string): Promise<DocumentData | null> {
 export async function getUserByUsername(
   username: string
 ): Promise<{ uid: string; profile: DocumentData } | null> {
-  const usersRef = query(
-    collection(db, "users"),
-    where("username", "==", username)
-  );
-  const userSnapshot = await getDocs(usersRef);
+  try {
+    const usersRef = query(
+      collection(db, "users"),
+      where("username", "==", username)
+    );
+    const userSnapshot = await getDocs(usersRef);
 
-  if (userSnapshot.empty) {
-    return null;
+    if (userSnapshot.empty) {
+      return null;
+    }
+
+    const doc = userSnapshot.docs[0];
+    return {
+      uid: doc.id,
+      profile: doc.data(),
+    };
+  } catch (error) {
+    logger.error("Failed to get user by username", error, { username });
+    throw error;
   }
-
-  const doc = userSnapshot.docs[0];
-  return {
-    uid: doc.id,
-    profile: doc.data(),
-  };
 }
 
 /**
@@ -80,21 +91,26 @@ export async function getUserByUsername(
 export async function getUserByAddress(
   address: string
 ): Promise<{ uid: string; profile: DocumentData } | null> {
-  const usersRef = query(
-    collection(db, "users"),
-    where("ethereumAddress", "==", address)
-  );
-  const snapshot = await getDocs(usersRef);
+  try {
+    const usersRef = query(
+      collection(db, "users"),
+      where("ethereumAddress", "==", address)
+    );
+    const snapshot = await getDocs(usersRef);
 
-  if (snapshot.empty) {
-    return null;
+    if (snapshot.empty) {
+      return null;
+    }
+
+    const doc = snapshot.docs[0];
+    return {
+      uid: doc.id,
+      profile: doc.data(),
+    };
+  } catch (error) {
+    logger.error("Failed to get user by address", error, { address });
+    throw error;
   }
-
-  const doc = snapshot.docs[0];
-  return {
-    uid: doc.id,
-    profile: doc.data(),
-  };
 }
 
 /**
@@ -104,14 +120,19 @@ export async function getUserByAddress(
  * @returns Array of posts
  */
 export async function getUserPosts(uid: string): Promise<DocumentData[]> {
-  const postsRef = collection(db, "users", uid, "posts");
-  const q = query(postsRef, orderBy("createdAt"));
-  const querySnapshot = await getDocs(q);
+  try {
+    const postsRef = collection(db, "users", uid, "posts");
+    const q = query(postsRef, orderBy("createdAt"));
+    const querySnapshot = await getDocs(q);
 
-  return querySnapshot.docs.map((doc) => ({
-    postId: doc.id,
-    ...doc.data(),
-  }));
+    return querySnapshot.docs.map((doc) => ({
+      postId: doc.id,
+      ...doc.data(),
+    }));
+  } catch (error) {
+    logger.error("Failed to get user posts", error, { uid });
+    throw error;
+  }
 }
 
 /**
@@ -121,9 +142,14 @@ export async function getUserPosts(uid: string): Promise<DocumentData[]> {
  * @returns Array of key UIDs
  */
 export async function getUserKeys(uid: string): Promise<string[]> {
-  const keysRef = collection(db, "users", uid, "keys");
-  const querySnapshot = await getDocs(keysRef);
-  return querySnapshot.docs.map((doc) => doc.id);
+  try {
+    const keysRef = collection(db, "users", uid, "keys");
+    const querySnapshot = await getDocs(keysRef);
+    return querySnapshot.docs.map((doc) => doc.id);
+  } catch (error) {
+    logger.error("Failed to get user keys", error, { uid });
+    throw error;
+  }
 }
 
 /**
@@ -139,14 +165,19 @@ export async function getUsers(
   sortOrder: "asc" | "desc" = "desc",
   maxResults: number = 100
 ): Promise<UserProfile[]> {
-  const usersRef = collection(db, "users");
-  const q = query(usersRef, orderBy(sortBy, sortOrder), limit(maxResults));
-  const querySnapshot = await getDocs(q);
+  try {
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, orderBy(sortBy, sortOrder), limit(maxResults));
+    const querySnapshot = await getDocs(q);
 
-  return querySnapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-  })) as UserProfile[];
+    return querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as UserProfile[];
+  } catch (error) {
+    logger.error("Failed to get users", error, { sortBy, sortOrder, maxResults });
+    throw error;
+  }
 }
 
 /**
@@ -159,7 +190,12 @@ export async function updateUserPhoto(
   uid: string,
   photoURL: string
 ): Promise<void> {
-  await updateDoc(doc(db, "users", uid), { photoURL });
+  try {
+    await updateDoc(doc(db, "users", uid), { photoURL });
+  } catch (error) {
+    logger.error("Failed to update user photo", error, { uid, photoURL });
+    throw error;
+  }
 }
 
 /**
@@ -169,9 +205,14 @@ export async function updateUserPhoto(
  * @returns True if username exists, false otherwise
  */
 export async function usernameExists(username: string): Promise<boolean> {
-  const ref = doc(db, `usernames/${username}`);
-  const docSnap = await getDoc(ref);
-  return docSnap.exists();
+  try {
+    const ref = doc(db, `usernames/${username}`);
+    const docSnap = await getDoc(ref);
+    return docSnap.exists();
+  } catch (error) {
+    logger.error("Failed to check username existence", error, { username });
+    throw error;
+  }
 }
 
 /**

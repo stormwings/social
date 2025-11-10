@@ -24,6 +24,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ENDPOINTS } from "@/lib/apiEndpoints";
+import { logger } from "@/lib/logger";
 
 /**
  * Interface for post data
@@ -63,20 +64,25 @@ export async function getKeyedPosts(userKeys: string[]): Promise<Post[]> {
     return [];
   }
 
-  const limitedUserKeys = userKeys.slice(0, 10);
-  const postsRef = collectionGroup(db, "posts");
-  const q = query(
-    postsRef,
-    where("uid", "in", limitedUserKeys),
-    orderBy("createdAt", "desc")
-  );
+  try {
+    const limitedUserKeys = userKeys.slice(0, 10);
+    const postsRef = collectionGroup(db, "posts");
+    const q = query(
+      postsRef,
+      where("uid", "in", limitedUserKeys),
+      orderBy("createdAt", "desc")
+    );
 
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map((doc) => ({
-    id: doc.id,
-    postId: doc.id,
-    ...doc.data(),
-  })) as Post[];
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      postId: doc.id,
+      ...doc.data(),
+    })) as Post[];
+  } catch (error) {
+    logger.error("Failed to get keyed posts", error, { userKeysCount: userKeys.length });
+    throw error;
+  }
 }
 
 /**
@@ -90,21 +96,27 @@ export async function createPost(
   uid: string,
   postData: CreatePostData
 ): Promise<string> {
-  const ref = doc(collection(db, `users/${uid}/posts`));
+  try {
+    const ref = doc(collection(db, `users/${uid}/posts`));
 
-  const post: Post = {
-    username: postData.username,
-    uid: postData.uid,
-    published: true,
-    content: postData.content,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-    heartCount: 0,
-    images: postData.images || [],
-  };
+    const post: Post = {
+      username: postData.username,
+      uid: postData.uid,
+      published: true,
+      content: postData.content,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      heartCount: 0,
+      images: postData.images || [],
+    };
 
-  await setDoc(ref, post);
-  return ref.id;
+    await setDoc(ref, post);
+    logger.info("Post created successfully", { uid, postId: ref.id });
+    return ref.id;
+  } catch (error) {
+    logger.error("Failed to create post", error, { uid });
+    throw error;
+  }
 }
 
 /**
@@ -119,18 +131,24 @@ export async function toggleHeart(
   userUid: string,
   hasHeart: boolean
 ): Promise<void> {
-  const batch = writeBatch(db);
-  const heartRef = doc(postRef, "hearts", userUid);
+  try {
+    const batch = writeBatch(db);
+    const heartRef = doc(postRef, "hearts", userUid);
 
-  batch.update(postRef, { heartCount: increment(hasHeart ? -1 : 1) });
+    batch.update(postRef, { heartCount: increment(hasHeart ? -1 : 1) });
 
-  if (hasHeart) {
-    batch.delete(heartRef);
-  } else {
-    batch.set(heartRef, { uid: userUid });
+    if (hasHeart) {
+      batch.delete(heartRef);
+    } else {
+      batch.set(heartRef, { uid: userUid });
+    }
+
+    await batch.commit();
+    logger.debug("Heart toggled", { userUid, hasHeart, postPath: postRef.path });
+  } catch (error) {
+    logger.error("Failed to toggle heart", error, { userUid, hasHeart, postPath: postRef.path });
+    throw error;
   }
-
-  await batch.commit();
 }
 
 /**

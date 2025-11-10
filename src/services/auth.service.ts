@@ -10,6 +10,8 @@ import { signInWithPopup, signInWithCustomToken } from "firebase/auth";
 import { ethers } from "ethers";
 import { auth, googleAuthProvider } from "@/lib/firebase";
 import { ENDPOINTS } from "@/lib/apiEndpoints";
+import { logger } from "@/lib/logger";
+import toast from "react-hot-toast";
 
 /**
  * Interface for username creation request
@@ -40,16 +42,21 @@ export async function createUserWithGeneratedWallet(
   username: string,
   token: string
 ): Promise<any> {
-  const response = await axios.post(
-    ENDPOINTS.CREATE_WITH_GENERATED_WALLET,
-    { username },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
-  return response;
+  try {
+    const response = await axios.post(
+      ENDPOINTS.CREATE_WITH_GENERATED_WALLET,
+      { username },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response;
+  } catch (error) {
+    logger.error("Failed to create user with generated wallet", error, { username });
+    throw error;
+  }
 }
 
 /**
@@ -66,16 +73,21 @@ export async function createUserWithExistingWallet(
   address: string,
   token: string
 ): Promise<any> {
-  const response = await axios.post(
-    ENDPOINTS.CREATE_WITH_EXISTING_WALLET,
-    { username, address },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
-  return response;
+  try {
+    const response = await axios.post(
+      ENDPOINTS.CREATE_WITH_EXISTING_WALLET,
+      { username, address },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response;
+  } catch (error) {
+    logger.error("Failed to create user with existing wallet", error, { username, address });
+    throw error;
+  }
 }
 
 /**
@@ -91,12 +103,17 @@ export async function verifyWalletSignature(
   signature: string,
   message: string
 ): Promise<string> {
-  const response = await axios.post(ENDPOINTS.VERIFY_WALLET, {
-    address,
-    signature,
-    message,
-  });
-  return response.data.token;
+  try {
+    const response = await axios.post(ENDPOINTS.VERIFY_WALLET, {
+      address,
+      signature,
+      message,
+    });
+    return response.data.token;
+  } catch (error) {
+    logger.error("Failed to verify wallet signature", error, { address });
+    throw error;
+  }
 }
 
 /**
@@ -105,7 +122,12 @@ export async function verifyWalletSignature(
  * @returns Firebase user credential
  */
 export async function signInWithGoogle() {
-  return await signInWithPopup(auth, googleAuthProvider);
+  try {
+    return await signInWithPopup(auth, googleAuthProvider);
+  } catch (error) {
+    logger.error("Failed to sign in with Google", error);
+    throw error;
+  }
 }
 
 /**
@@ -114,16 +136,31 @@ export async function signInWithGoogle() {
  * @returns Object containing address and Firebase user credential
  */
 export async function signInWithWallet(): Promise<{ address: string }> {
-  const message = "signin";
-  const provider = new ethers.BrowserProvider((window as any).ethereum);
-  const signer = await provider.getSigner();
-  const signature = await signer.signMessage(message);
-  const address = await signer.getAddress();
+  try {
+    if (!(window as any).ethereum) {
+      const errorMsg = "No Ethereum wallet detected";
+      logger.error(errorMsg);
+      toast.error(errorMsg);
+      throw new Error(errorMsg);
+    }
 
-  const token = await verifyWalletSignature(address, signature, message);
-  await signInWithCustomToken(auth, token);
+    const message = "signin";
+    const provider = new ethers.BrowserProvider((window as any).ethereum);
+    const signer = await provider.getSigner();
+    const signature = await signer.signMessage(message);
+    const address = await signer.getAddress();
 
-  return { address };
+    const token = await verifyWalletSignature(address, signature, message);
+    await signInWithCustomToken(auth, token);
+
+    return { address };
+  } catch (error) {
+    logger.error("Failed to sign in with wallet", error);
+    if (error instanceof Error && error.message.includes("user rejected")) {
+      toast.error("Wallet connection rejected");
+    }
+    throw error;
+  }
 }
 
 /**
