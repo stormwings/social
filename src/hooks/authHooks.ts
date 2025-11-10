@@ -1,11 +1,8 @@
 import { useState, useEffect } from "react";
-import { signInWithPopup, signInWithCustomToken } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { ethers } from "ethers";
-import axios from "axios";
-import { auth, db, googleAuthProvider } from "@/lib/firebase";
-import { ENDPOINTS } from "@/lib/apiEndpoints";
+import { db } from "@/lib/firebase";
+import { authService } from "@/services";
 
 export function useSubmitUsername(user: any | null, userWallet: string | null) {
   const [loading, setLoading] = useState(false);
@@ -17,15 +14,9 @@ export function useSubmitUsername(user: any | null, userWallet: string | null) {
     setLoading(true);
     try {
       const token = await user.getIdToken();
-      const response = await axios.post(
-        userWallet ? ENDPOINTS.CREATE_WITH_EXISTING_WALLET : ENDPOINTS.CREATE_WITH_GENERATED_WALLET,
-        { username, address: userWallet },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = userWallet 
+        ? await authService.createUserWithExistingWallet(username, userWallet, token)
+        : await authService.createUserWithGeneratedWallet(username, token);
 
       if (response.status === 200) {
         router.push("/deposit");
@@ -82,7 +73,7 @@ export function useSignInWithGoogle() {
   const signInWithGoogle = async () => {
     setLoading(true);
     try {
-      await signInWithPopup(auth, googleAuthProvider);
+      await authService.signInWithGoogle();
     } catch (error) {
       console.error("error signing in with google:", error);
     } finally {
@@ -99,19 +90,7 @@ export function useSignInWithWallet() {
   const signInWithWallet = async (saveUserWallet: Function) => {
     setLoading(true);
     try {
-      const message = "signin";
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
-      const signer = await provider.getSigner();
-      const signature = await signer.signMessage(message);
-      const address = await signer.getAddress();
-
-      const response = await axios.post(ENDPOINTS.VERIFY_WALLET, {
-        address,
-        signature,
-        message,
-      });
-
-      await signInWithCustomToken(auth, response.data.token);
+      const { address } = await authService.signInWithWallet();
       saveUserWallet(address);
     } catch (error) {
       console.error("error signing in with wallet:", error);

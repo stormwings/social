@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import axios from "axios";
 import toast from "react-hot-toast";
 import { storage } from "@/lib/firebase";
-import { ENDPOINTS } from "@/lib/apiEndpoints";
+import { withdrawalService } from "@/services";
 
 export function useWithdraw(user: any) {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -17,12 +16,11 @@ export function useWithdraw(user: any) {
     setIsProcessing(true);
     try {
       const token = await user.getIdToken();
-      const response = await axios.post(ENDPOINTS.WITHDRAW_USDT, data, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      toast.success(response.data.message);
+      const response = await withdrawalService.withdrawUsdt(data, token);
+      toast.success(response.message);
     } catch (err) {
-      toast.error("An error occurred");
+      const errorMessage = err instanceof Error ? err.message : "An error occurred";
+      toast.error(errorMessage);
     } finally {
       setIsProcessing(false);
     }
