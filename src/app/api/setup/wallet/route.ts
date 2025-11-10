@@ -1,58 +1,58 @@
 import { NextResponse } from 'next/server';
-import { headers } from 'next/headers'
-
 import admin from '@/lib/firebase-admin';
+import {
+  authenticateRequest,
+  authenticationError,
+  errorResponse,
+  internalError,
+  validateEnvVar,
+  validateRequiredFields,
+} from '@/lib/api';
+import type { SetupWalletRequest } from '@/lib/api';
 
 export async function POST(request: Request) {
-    const headersList = headers()
-    const authHeader = headersList.get('Authorization')
-    const setup_data  = await request.json();
-    const username = setup_data.username;
-    const address = setup_data.address;
+  // Authenticate user
+  const user = await authenticateRequest();
+  if (!user) {
+    return authenticationError();
+  }
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return NextResponse.json({ message: "Not authenticated", error: 101 });
+  try {
+    // Validate encryption key exists
+    validateEnvVar('ENCRYPTION_KEY');
+
+    const body: SetupWalletRequest = await request.json();
+    const { username, address } = body;
+
+    // Validate required fields
+    if (!validateRequiredFields(body, ['username', 'address'])) {
+      return errorResponse('Missing required fields', 103, 400);
     }
 
-    const token = authHeader.split('Bearer ')[1];
+    const db = admin.firestore();
+    const batch = db.batch();
 
-    if (!process.env.ENCRYPTION_KEY) {
-        console.log("No encryption key");
-        return NextResponse.json({ message: "Internal Error", error: 101 });
-    }
+    const usernameDoc = db.doc(`usernames/${username}`);
+    const userDoc = db.doc(`users/${user.uid}`);
 
-    try {
-        const decodedToken = await admin.auth().verifyIdToken(token);
+    const userData = {
+      isWallet: true,
+      username: username,
+      ethereumAddress: address,
+      holders: 0,
+      points: 0,
+      displayName: '',
+      photoURL: '',
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
 
-        if (!decodedToken) {
-            return NextResponse.json({ message: "Not authenticated", error: 101 });
-        }
+    batch.set(usernameDoc, { uid: user.uid });
+    batch.set(userDoc, userData);
 
-        const userData = {
-          isWallet: true, // (pending) request firebase
-          username: username,
-          ethereumAddress: address,
-          holders: 0,
-          points: 0,
-          displayName: "",
-          photoURL: "",
-          createdAt: admin.firestore.FieldValue.serverTimestamp()
-      };
+    await batch.commit();
 
-        const db = admin.firestore();
-        const batch = db.batch();
-
-        const usernameDoc = db.doc(`usernames/${username}`);
-        const userDoc = db.doc(`users/${decodedToken.uid}`);
-
-        batch.set(usernameDoc, { uid: decodedToken.uid });
-        batch.set(userDoc, userData);
-
-        await batch.commit();
-
-        return NextResponse.json({ message: "Wallet Created" }, { status: 200});
-    } catch (error) {
-        console.log(error);
-        return NextResponse.json({ message: 'Internal Error', error: 101 }, { status: 500 });
-    }
+    return NextResponse.json({ message: 'Wallet Created' }, { status: 200 });
+  } catch (error) {
+    return internalError(error);
+  }
 }

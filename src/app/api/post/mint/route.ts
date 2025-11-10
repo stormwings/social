@@ -1,56 +1,52 @@
-import { NextResponse } from "next/server";
-import { headers } from 'next/headers'
-
-import admin from "@/lib/firebase-admin";
+import { NextResponse } from 'next/server';
+import admin from '@/lib/firebase-admin';
+import {
+  authenticateRequest,
+  authenticationError,
+  errorResponse,
+  internalError,
+  successResponse,
+  validateRequiredFields,
+} from '@/lib/api';
+import type { MintPostRequest } from '@/lib/api';
 
 export async function POST(request: Request) {
-    const {
-        userUID,
-        postId,
-        tokenId,
-        ethereumAddress,
-    } = await request.json();
+  // Authenticate user
+  const user = await authenticateRequest();
+  if (!user) {
+    return authenticationError();
+  }
 
-    const headersList = headers()
-    const authHeader = headersList.get('Authorization')
+  try {
+    const body: MintPostRequest = await request.json();
+    const { userUID, postId, tokenId, ethereumAddress } = body;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return NextResponse.json({ message: "Not authenticated", error: 101 });
+    // Validate required fields
+    if (!validateRequiredFields(body, ['userUID', 'postId', 'tokenId', 'ethereumAddress'])) {
+      return errorResponse('Missing required fields', 103, 400);
     }
 
-    const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const db = admin.firestore();
+    const postRef = db
+      .collection('users')
+      .doc(userUID)
+      .collection('posts')
+      .doc(postId);
 
-    if (!decodedToken) {
-        return NextResponse.json({ message: "Not authenticated", error: 101 });
+    const postDoc = await postRef.get();
+
+    if (!postDoc.exists) {
+      return errorResponse('Post not found', 404, 404);
     }
 
-    try {
-        const db = admin.firestore();
+    // Update post with owner key and token ID
+    await postRef.update({
+      ownerKey: ethereumAddress,
+      tokenId: tokenId,
+    });
 
-        const postRef = db
-            .collection("users").doc(userUID)
-            .collection("posts").doc(postId);
-        
-        const postDoc = await postRef.get();
-
-        if (!postDoc.exists) {
-            return NextResponse.json({ message: "Post not found" });
-        } else {
-            await postRef.update({ 
-                ownerKey: ethereumAddress,
-                tokenId: tokenId,
-            });
-
-            return NextResponse.json({
-                message: "Operation processed",
-                ok: true,
-            });
-        }
-    } catch (error) {
-        return NextResponse.json({
-            message: "Internal Server Error",
-            error: error,
-        });
-    }
+    return successResponse('Operation processed');
+  } catch (error) {
+    return internalError(error);
+  }
 }
