@@ -1,24 +1,17 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   collection,
-  collectionGroup,
-  query,
-  orderBy,
-  where,
-  getDocs,
-  DocumentData,
   doc,
+  DocumentData,
   DocumentReference,
-  setDoc,
   serverTimestamp,
-  writeBatch,
-  increment,
 } from "firebase/firestore";
 import { useDocument } from "react-firebase-hooks/firestore";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { auth, db } from "@/lib/firebase";
+import { postService } from "@/services";
 
 type Post = {
   id: string;
@@ -35,24 +28,8 @@ export const useKeyedPosts = (userKeys: string[]) => {
         return;
       }
 
-      const limitedUserKeys = userKeys.slice(0, 10); // limita a los primeros 10 keys
-
-      const postsRef = collectionGroup(db, "posts"); // asumiendo que los posts están en una colección 'posts'
-      const q = query(
-        postsRef,
-        where("uid", "in", limitedUserKeys),
-        orderBy("createdAt", "desc")
-      );
-
-      const querySnapshot = await getDocs(q);
-      const posts = querySnapshot.docs.map((doc) => {
-        const data = doc.data() as Post; // Asegúrate de tipar correctamente los datos de tu post
-        data.id = doc.id;
-        data.postId = doc.id;
-        return data;
-      });
-
-      setKeyedPosts(posts);
+      const posts = await postService.getKeyedPosts(userKeys);
+      setKeyedPosts(posts as Post[]);
     }
 
     if (userKeys.length > 0) {
@@ -86,25 +63,22 @@ export function usePostForm(user: any, username: string) {
   const createPost = async (data: Inputs) => {
     if (!user) return;
 
-    const ref = doc(collection(db, `users/${user.uid}/posts`));
-
     const { content } = data;
 
-    const postData = {
-      username: username,
-      uid: user.uid,
-      published: true,
-      content: content,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      heartCount: 0,
-      images: images,
-    };
+    try {
+      await postService.createPost(user.uid, {
+        username: username,
+        uid: user.uid,
+        content: content,
+        images: images,
+      });
 
-    await setDoc(ref, postData);
-
-    toast.success("Post created!");
-    router.push("/private/posts");
+      toast.success("Post created!");
+      router.push("/private/posts");
+    } catch (error) {
+      console.error("Error creating post:", error);
+      toast.error("Failed to create post");
+    }
   };
 
   return {
@@ -150,13 +124,14 @@ export function useHeart(postRef: DocumentReference | null) {
   const enabled = !!uid && !!postRef;
 
   const toggleHeart = async () => {
-    if (!enabled) return;
-    const batch = writeBatch(db);
-    batch.update(postRef!, { heartCount: increment(hasHeart ? -1 : 1) });
-    if (heartRef) {
-      hasHeart ? batch.delete(heartRef) : batch.set(heartRef, { uid });
+    if (!enabled || !postRef || !uid) return;
+    
+    try {
+      await postService.toggleHeart(postRef, uid, hasHeart);
+    } catch (error) {
+      console.error("Error toggling heart:", error);
+      toast.error("Failed to update heart");
     }
-    await batch.commit();
   };
 
   return { hasHeart, toggleHeart, enabled };

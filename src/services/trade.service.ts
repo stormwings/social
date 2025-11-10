@@ -1,3 +1,11 @@
+/**
+ * Trade Service
+ * 
+ * Handles all trading-related operations including buy/sell keys.
+ * Supports both wallet-authenticated (client-side signing) and 
+ * Google-authenticated (server-side signing) flows.
+ */
+
 import { ethers } from 'ethers';
 import toast from 'react-hot-toast';
 
@@ -7,6 +15,9 @@ import { ENDPOINTS } from '@/lib/apiEndpoints';
 import contractAbi from './../usersKeysAbi';
 import usdtTokenAbi from '../usdtTokenAbi';
 
+/**
+ * Get signer from browser wallet
+ */
 const getSigner = async () => {
   const browserProvider = new ethers.BrowserProvider((window as any).ethereum);
   const signer = await browserProvider.getSigner();  
@@ -14,21 +25,41 @@ const getSigner = async () => {
   return signer;
 }
 
-type IHandleBuyKey = {
-  user: any, // (pending) build user object
-  ethereumAddress: string,
-  subjectUID: string,
-  numberOfKeys: string | number, // (pending) normalize
-  useWallet?: boolean,
+/**
+ * Interface for buy/sell key request
+ */
+export interface TradeKeyRequest {
+  user: any;
+  ethereumAddress: string;
+  subjectUID: string;
+  numberOfKeys: string | number;
+  useWallet?: boolean;
 }
 
+/**
+ * Interface for trade response
+ */
+export interface TradeResponse {
+  success?: boolean;
+  message?: string;
+  txHash?: string;
+  data?: any;
+}
+
+/**
+ * Buy keys for a subject
+ * Supports both wallet-authenticated and server-side flows
+ * 
+ * @param request - Buy key request parameters
+ * @returns Trade response with transaction details
+ */
 export const handleBuyKey = async ({
   user,
   ethereumAddress,
   subjectUID,
   numberOfKeys,
   useWallet = false,
-}: IHandleBuyKey) => {
+}: TradeKeyRequest): Promise<TradeResponse | undefined> => {
   if (!user || !ethereumAddress) return;
 
   const token = await user.getIdToken();
@@ -152,13 +183,20 @@ export const handleBuyKey = async ({
   }
 }
 
+/**
+ * Sell keys for a subject
+ * Supports both wallet-authenticated and server-side flows
+ * 
+ * @param request - Sell key request parameters
+ * @returns Trade response with transaction details
+ */
 export const handleSellKey = async ({
   user,
   ethereumAddress,
   subjectUID,
   numberOfKeys,
   useWallet = false,
-}: IHandleBuyKey) => {
+}: TradeKeyRequest): Promise<TradeResponse | undefined> => {
   if (!user || !ethereumAddress) return;
 
   const token = await user.getIdToken();
@@ -256,3 +294,11 @@ export const handleSellKey = async ({
     return responseData;
   }
 }
+
+/**
+ * Trade Service API
+ */
+export const tradeService = {
+  handleBuyKey,
+  handleSellKey,
+};

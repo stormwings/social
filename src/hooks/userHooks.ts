@@ -4,17 +4,10 @@ import {
   doc,
   onSnapshot,
   DocumentData,
-  collection,
-  query,
-  where,
-  orderBy,
-  getDoc,
-  getDocs,
   Timestamp,
-  updateDoc,
-  limit,
 } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+import { userService } from "@/services";
 
 export function useUserData(customId: string | null = null) {
   const [user] = useAuthState(auth);
@@ -67,15 +60,12 @@ export const useUserPosts = (user: any) => {
     const fetchPosts = async () => {
       if (!user) return;
 
-      const postsRef = collection(db, "users", user.uid, "posts");
-      const q = query(postsRef, orderBy("createdAt"));
-
-      const querySnapshot = await getDocs(q);
-      const postData = querySnapshot.docs.map((doc) => ({
-        postId: doc.id,
-        ...doc.data(),
-      }));
-      setPosts(postData);
+      try {
+        const postData = await userService.getUserPosts(user.uid);
+        setPosts(postData);
+      } catch (error) {
+        console.error("Error fetching user posts:", error);
+      }
     };
 
     fetchPosts();
@@ -97,16 +87,20 @@ export function useUserProfileByUsername(subjectUsername: string | null) {
     async function fetchUserProfile() {
       if (!subjectUsername) return;
 
-      const usersRef = query(
-        collection(db, "users"),
-        where("username", "==", subjectUsername)
-      );
-      const userSnapshot = await getDocs(usersRef);
-      userSnapshot.forEach((doc) => {
-        setUserUID(doc.id);
-        setUserProfile(doc.data());
-        setSubjectEthereumAddress(doc.data().ethereumAddress);
-      });
+      try {
+        const result = await userService.getUserByUsername(subjectUsername);
+        if (result) {
+          setUserUID(result.uid);
+          setUserProfile(result.profile);
+          setSubjectEthereumAddress(result.profile.ethereumAddress);
+        } else {
+          setUserUID(null);
+          setUserProfile(null);
+          setSubjectEthereumAddress(null);
+        }
+      } catch (error) {
+        console.error("Error fetching user profile by username:", error);
+      }
     }
     fetchUserProfile();
   }, [subjectUsername]);
@@ -124,12 +118,14 @@ export function useUserProfileByUid(subjectUID: string) {
     async function fetchUserProfile() {
       if (!subjectUID) return;
 
-      const userDocRef = doc(db, "users", subjectUID);
-      const userSnapshot = await getDoc(userDocRef);
-
-      if (userSnapshot.exists()) {
-        setUserProfile(userSnapshot.data());
-        setEthereumAddress(userSnapshot.data().ethereumAddress);
+      try {
+        const profile = await userService.getUserByUid(subjectUID);
+        if (profile) {
+          setUserProfile(profile);
+          setEthereumAddress(profile.ethereumAddress);
+        }
+      } catch (error) {
+        console.error("Error fetching user profile by UID:", error);
       }
     }
 
@@ -145,10 +141,12 @@ export const useUserKeys = (user: any) => {
   useEffect(() => {
     async function fetchUserKeys() {
       if (user) {
-        const keysRef = collection(db, "users", user.uid, "keys");
-        const querySnapshot = await getDocs(keysRef);
-        const keys = querySnapshot.docs.map((doc) => doc.id);
-        setUserKeys(keys);
+        try {
+          const keys = await userService.getUserKeys(user.uid);
+          setUserKeys(keys);
+        } catch (error) {
+          console.error("Error fetching user keys:", error);
+        }
       }
     }
     fetchUserKeys();
@@ -178,15 +176,13 @@ export const useUsersData = ({
 
   useEffect(() => {
     async function fetchAllUsers() {
-      const usersRef = collection(db, "users");
-      const fieldToSort = sortType === "newest" ? "createdAt" : "holders";
-      const querySnapshot = await getDocs(
-        query(usersRef, orderBy(fieldToSort, "desc"), limit(100))
-      );
-      const fetchedUsers = querySnapshot.docs.map(
-        (doc) => ({ id: doc.id, ...doc.data() } as User)
-      );
-      setUsers(fetchedUsers);
+      try {
+        const sortBy = sortType === "newest" ? "createdAt" : "holders";
+        const fetchedUsers = await userService.getUsers(sortBy, "desc", 100);
+        setUsers(fetchedUsers as User[]);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+      }
     }
     fetchAllUsers();
   }, [sortType]);
@@ -207,16 +203,16 @@ export function useUserProfileAndPostsByUsername(subjectUsername: string | null)
       if (!subjectUsername) return;
       setLoadingProfile(true);
       try {
-        const usersRef = query(collection(db, "users"), where("username", "==", subjectUsername));
-        const userSnapshot = await getDocs(usersRef);
-        const doc0 = userSnapshot.docs[0];
-        if (doc0 && !cancelled) {
-          setUserUID(doc0.id);
-          setUserProfile(doc0.data());
+        const result = await userService.getUserByUsername(subjectUsername);
+        if (result && !cancelled) {
+          setUserUID(result.uid);
+          setUserProfile(result.profile);
         } else if (!cancelled) {
           setUserUID(null);
           setUserProfile(null);
         }
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
       } finally {
         if (!cancelled) setLoadingProfile(false);
       }
@@ -230,11 +226,10 @@ export function useUserProfileAndPostsByUsername(subjectUsername: string | null)
       if (!userUID || posts !== null) return;
       setLoadingPosts(true);
       try {
-        const postsRef = collection(db, "users", userUID, "posts");
-        const q = query(postsRef, orderBy("createdAt"));
-        const qs = await getDocs(q);
-        const data = qs.docs.map(d => ({ ...d.data(), postId: d.id }));
+        const data = await userService.getUserPosts(userUID);
         if (!cancelled) setPosts(data);
+      } catch (error) {
+        console.error("Error fetching user posts:", error);
       } finally {
         if (!cancelled) setLoadingPosts(false);
       }
@@ -257,20 +252,19 @@ export function useUserProfileByAddress(subjectAddress: string | null) {
         setUserProfile(null);
         return;
       }
-      const usersRef = query(
-        collection(db, "users"),
-        where("ethereumAddress", "==", subjectAddress)
-      );
-      const snap = await getDocs(usersRef);
-      const d0 = snap.docs[0];
-      if (!cancelled) {
-        if (d0) {
-          setUserUID(d0.id);
-          setUserProfile(d0.data());
-        } else {
-          setUserUID(null);
-          setUserProfile(null);
+      try {
+        const result = await userService.getUserByAddress(subjectAddress);
+        if (!cancelled) {
+          if (result) {
+            setUserUID(result.uid);
+            setUserProfile(result.profile);
+          } else {
+            setUserUID(null);
+            setUserProfile(null);
+          }
         }
+      } catch (error) {
+        console.error("Error fetching user by address:", error);
       }
     })();
     return () => {
@@ -283,7 +277,12 @@ export function useUserProfileByAddress(subjectAddress: string | null) {
 
 export function useUpdateUserPhoto() {
   const updateUserPhoto = async (uid: string, photoURL: string) => {
-    await updateDoc(doc(db, "users", uid), { photoURL });
+    try {
+      await userService.updateUserPhoto(uid, photoURL);
+    } catch (error) {
+      console.error("Error updating user photo:", error);
+      throw error;
+    }
   };
   return { updateUserPhoto };
 }
