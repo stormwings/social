@@ -5,8 +5,10 @@ import {
   orderBy,
   onSnapshot,
 } from "firebase/firestore";
+import toast from "react-hot-toast";
 import { db } from "@/lib/firebase";
 import { chatService, ChatData } from "@/services";
+import { logger } from "@/lib/logger";
 
 export function useUserChats(user: any) {
   const [userChats, setUserChats] = useState<ChatData[]>([]);
@@ -19,7 +21,8 @@ export function useUserChats(user: any) {
         const fetchedChats = await chatService.getUserChats(user.uid);
         setUserChats(fetchedChats);
       } catch (error) {
-        console.error("Error fetching user chats:", error);
+        logger.error("Error fetching user chats", error, { uid: user?.uid });
+        toast.error("Failed to load chats");
       }
     }
 
@@ -37,11 +40,18 @@ export function useChatMessages(chatId: string) {
       const messagesRef = collection(db, "chats", chatId, "messages");
       const q = query(messagesRef, orderBy("timestamp", "asc"));
 
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        setMessages(
-          snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-        );
-      });
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          setMessages(
+            snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+          );
+        },
+        (error) => {
+          logger.error("Error fetching chat messages", error, { chatId });
+          toast.error("Failed to load messages");
+        }
+      );
 
       return () => unsubscribe();
     }
@@ -72,7 +82,8 @@ export function useChatParticipant(chatId: string, user: any) {
           });
         }
       } catch (error) {
-        console.error("Error fetching chat participant:", error);
+        logger.error("Error fetching chat participant", error, { chatId });
+        toast.error("Failed to load chat participant");
       }
     }
 
@@ -91,7 +102,8 @@ export function useSendMessage(chatId: string, user: any) {
         await chatService.sendMessage(chatId, user.uid, newMessage);
         setNewMessage("");
       } catch (error) {
-        console.error("Error sending message:", error);
+        logger.error("Error sending message", error, { chatId });
+        toast.error("Failed to send message");
       }
     }
   };

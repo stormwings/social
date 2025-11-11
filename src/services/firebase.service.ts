@@ -26,6 +26,7 @@ import {
   QueryConstraint,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { logger } from "@/lib/logger";
 
 /**
  * Get a single document from Firestore
@@ -34,9 +35,14 @@ import { db } from "@/lib/firebase";
  * @returns Document data or null if not found
  */
 export async function getDocument(path: string): Promise<DocumentData | null> {
-  const docRef = doc(db, path);
-  const docSnap = await getDoc(docRef);
-  return docSnap.exists() ? docSnap.data() : null;
+  try {
+    const docRef = doc(db, path);
+    const docSnap = await getDoc(docRef);
+    return docSnap.exists() ? docSnap.data() : null;
+  } catch (error) {
+    logger.error("Failed to get document", error, { path });
+    throw error;
+  }
 }
 
 /**
@@ -50,9 +56,14 @@ export async function queryDocuments(
   collectionPath: string,
   ...constraints: QueryConstraint[]
 ): Promise<DocumentData[]> {
-  const q = query(collection(db, collectionPath), ...constraints);
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  try {
+    const q = query(collection(db, collectionPath), ...constraints);
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    logger.error("Failed to query documents", error, { collectionPath });
+    throw error;
+  }
 }
 
 /**
@@ -66,9 +77,14 @@ export async function queryCollectionGroup(
   collectionName: string,
   ...constraints: QueryConstraint[]
 ): Promise<DocumentData[]> {
-  const q = query(collectionGroup(db, collectionName), ...constraints);
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  try {
+    const q = query(collectionGroup(db, collectionName), ...constraints);
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    logger.error("Failed to query collection group", error, { collectionName });
+    throw error;
+  }
 }
 
 /**
@@ -83,8 +99,13 @@ export async function saveDocument(
   data: any,
   merge: boolean = true
 ): Promise<void> {
-  const docRef = doc(db, path);
-  await setDoc(docRef, data, { merge });
+  try {
+    const docRef = doc(db, path);
+    await setDoc(docRef, data, { merge });
+  } catch (error) {
+    logger.error("Failed to save document", error, { path });
+    throw error;
+  }
 }
 
 /**
@@ -97,8 +118,13 @@ export async function updateDocument(
   path: string,
   data: any
 ): Promise<void> {
-  const docRef = doc(db, path);
-  await updateDoc(docRef, data);
+  try {
+    const docRef = doc(db, path);
+    await updateDoc(docRef, data);
+  } catch (error) {
+    logger.error("Failed to update document", error, { path });
+    throw error;
+  }
 }
 
 /**
@@ -112,7 +138,12 @@ export async function addDocument(
   collectionPath: string,
   data: any
 ): Promise<DocumentReference> {
-  return await addDoc(collection(db, collectionPath), data);
+  try {
+    return await addDoc(collection(db, collectionPath), data);
+  } catch (error) {
+    logger.error("Failed to add document", error, { collectionPath });
+    throw error;
+  }
 }
 
 /**
@@ -127,24 +158,29 @@ export async function batchWrite(
     data?: any;
   }>
 ): Promise<void> {
-  const batch = writeBatch(db);
+  try {
+    const batch = writeBatch(db);
 
-  operations.forEach((op) => {
-    const docRef = doc(db, op.path);
-    switch (op.type) {
-      case "set":
-        batch.set(docRef, op.data);
-        break;
-      case "update":
-        batch.update(docRef, op.data);
-        break;
-      case "delete":
-        batch.delete(docRef);
-        break;
-    }
-  });
+    operations.forEach((op) => {
+      const docRef = doc(db, op.path);
+      switch (op.type) {
+        case "set":
+          batch.set(docRef, op.data);
+          break;
+        case "update":
+          batch.update(docRef, op.data);
+          break;
+        case "delete":
+          batch.delete(docRef);
+          break;
+      }
+    });
 
-  await batch.commit();
+    await batch.commit();
+  } catch (error) {
+    logger.error("Failed to batch write", error, { operationsCount: operations.length });
+    throw error;
+  }
 }
 
 /**

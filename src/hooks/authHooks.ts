@@ -1,15 +1,20 @@
 import { useState, useEffect } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 import { db } from "@/lib/firebase";
 import { authService } from "@/services";
+import { logger } from "@/lib/logger";
 
 export function useSubmitUsername(user: any | null, userWallet: string | null) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const submitUsername = async (username: string) => {
-    if (!user) return;
+    if (!user) {
+      toast.error("User not authenticated");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -19,12 +24,19 @@ export function useSubmitUsername(user: any | null, userWallet: string | null) {
         : await authService.createUserWithGeneratedWallet(username, token);
 
       if (response.status === 200) {
+        toast.success("Account created successfully!");
         router.push("/deposit");
       } else if (response.status === 201) {
+        toast.success("Welcome back!");
         router.push("/private/home");
       }
     } catch (error) {
-      console.error("error setting up the username:", error);
+      logger.error("Error setting up username", error, { username });
+      if (error instanceof Error) {
+        toast.error(error.message || "Failed to create username");
+      } else {
+        toast.error("Failed to create username");
+      }
     } finally {
       setLoading(false);
     }
@@ -46,10 +58,17 @@ export function useUsernameValidation(initialValue: string = "") {
 
     setLoading(true);
     const timer = setTimeout(async () => {
-      const ref = doc(db, `usernames/${formValue}`);
-      const docSnap = await getDoc(ref);
-      setIsValid(!docSnap.exists());
-      setLoading(false);
+      try {
+        const ref = doc(db, `usernames/${formValue}`);
+        const docSnap = await getDoc(ref);
+        setIsValid(!docSnap.exists());
+      } catch (error) {
+        logger.error("Failed to validate username", error, { username: formValue });
+        setIsValid(false);
+        toast.error("Failed to validate username");
+      } finally {
+        setLoading(false);
+      }
     }, 500);
 
     return () => clearTimeout(timer);
@@ -74,8 +93,10 @@ export function useSignInWithGoogle() {
     setLoading(true);
     try {
       await authService.signInWithGoogle();
+      toast.success("Signed in with Google successfully!");
     } catch (error) {
-      console.error("error signing in with google:", error);
+      logger.error("Error signing in with Google", error);
+      toast.error("Failed to sign in with Google");
     } finally {
       setLoading(false);
     }
@@ -92,8 +113,10 @@ export function useSignInWithWallet() {
     try {
       const { address } = await authService.signInWithWallet();
       saveUserWallet(address);
+      toast.success("Wallet connected successfully!");
     } catch (error) {
-      console.error("error signing in with wallet:", error);
+      logger.error("Error signing in with wallet", error);
+      // Don't show toast here as authService already handles it
     } finally {
       setLoading(false);
     }

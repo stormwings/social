@@ -16,6 +16,7 @@ import {
   DocumentData,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { logger } from "@/lib/logger";
 
 /**
  * Interface for comment data
@@ -36,17 +37,22 @@ export interface Comment {
  * @returns Array of comments sorted by timestamp
  */
 export async function getCommentsByPostId(postId: string): Promise<Comment[]> {
-  const commentsQuery = query(
-    collection(db, "comments"),
-    where("postId", "==", postId),
-    orderBy("timestamp", "asc")
-  );
-  const querySnapshot = await getDocs(commentsQuery);
+  try {
+    const commentsQuery = query(
+      collection(db, "comments"),
+      where("postId", "==", postId),
+      orderBy("timestamp", "asc")
+    );
+    const querySnapshot = await getDocs(commentsQuery);
 
-  return querySnapshot.docs.map((doc) => ({
-    ...doc.data(),
-    commentId: doc.id,
-  })) as Comment[];
+    return querySnapshot.docs.map((doc) => ({
+      ...doc.data(),
+      commentId: doc.id,
+    })) as Comment[];
+  } catch (error) {
+    logger.error("Failed to get comments by post ID", error, { postId });
+    throw error;
+  }
 }
 
 /**
@@ -58,13 +64,19 @@ export async function getCommentsByPostId(postId: string): Promise<Comment[]> {
 export async function addComment(
   comment: Omit<Comment, "commentId" | "timestamp">
 ): Promise<string> {
-  const newComment = {
-    ...comment,
-    timestamp: serverTimestamp(),
-  };
+  try {
+    const newComment = {
+      ...comment,
+      timestamp: serverTimestamp(),
+    };
 
-  const docRef = await addDoc(collection(db, "comments"), newComment);
-  return docRef.id;
+    const docRef = await addDoc(collection(db, "comments"), newComment);
+    logger.debug("Comment added successfully", { postId: comment.postId, commentId: docRef.id });
+    return docRef.id;
+  } catch (error) {
+    logger.error("Failed to add comment", error, { postId: comment.postId });
+    throw error;
+  }
 }
 
 /**
