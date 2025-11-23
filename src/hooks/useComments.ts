@@ -1,15 +1,10 @@
 import { useState, useEffect } from 'react';
-import { db } from '@/lib/firebase';
-import { collection, addDoc, query, orderBy, getDocs, serverTimestamp , where } from 'firebase/firestore';
+import toast from 'react-hot-toast';
+import { commentsService, Comment } from '@/services';
+import { logger } from '@/lib/logger';
 
-export interface IComment {
-  commentId?: string;
-  postId: string;
-  userId: string;
-  userAddress: string;
-  text: string;
-  timestamp: any;
-}
+// Re-export Comment interface for backward compatibility
+export interface IComment extends Comment {}
 
 interface useCommentsInterface {
   comments: IComment[];
@@ -21,40 +16,45 @@ export const useComments = (postId: string, userId: string): useCommentsInterfac
 
   useEffect(() => {
     const fetchComments = async () => {
-      const commentsQuery = query(
-        collection(db, 'comments'),
-        where('postId', '==', postId),
-        orderBy('timestamp', 'asc')
-      );
-      const querySnapshot = await getDocs(commentsQuery);
-
-      const commentsData = querySnapshot.docs.map((doc) => ({
-        ...doc.data(),
-        commentId: doc.id,
-      } as IComment));
-
-      setComments(commentsData);
+      if (!postId) return;
+      
+      try {
+        const commentsData = await commentsService.getCommentsByPostId(postId);
+        setComments(commentsData);
+      } catch (error) {
+        logger.error("Error fetching comments", error, { postId });
+        toast.error("Failed to load comments");
+      }
     };
 
-    if (postId) {
-      fetchComments();
-    }
+    fetchComments();
   }, [postId]);
 
   const sendComment = async (text: string, userAddress: string) => {
-    const newComment: IComment = {
-      postId: postId,
-      userId: userId,
-      userAddress: userAddress,
-      text: text,
-      timestamp: serverTimestamp(),
+    try {
+      const commentId = await commentsService.addComment({
+        postId,
+        userId,
+        userAddress,
+        text,
+      });
+
+      // Optimistically add comment to local state
+      const newComment: IComment = {
+        commentId,
+        postId,
+        userId,
+        userAddress,
+        text,
+        timestamp: new Date(),
+      };
+
+      setComments([...comments, newComment]);
+      toast.success("Comment added!");
+    } catch (error) {
+      logger.error("Error sending comment", error, { postId });
+      toast.error("Failed to send comment");
     }
-
-    await addDoc(collection(db, 'comments'), newComment);
-
-    const newCommentsList = [newComment, ...comments];
-
-    setComments(newCommentsList);
   };
 
   return { comments, sendComment };

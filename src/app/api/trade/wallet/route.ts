@@ -1,117 +1,125 @@
 export const maxDuration = 60;
 
-import { NextResponse } from "next/server";
-import { headers } from "next/headers";
-import { ethers } from "ethers";
-
-import admin from "@/lib/firebase-admin";
-import * as dappParams from "@/lib/dappParams";
-
-import contractAbi from "./../../../../usersKeysAbi";
-import usdtTokenAbi from "../../../../usdtTokenAbi";
+import { NextResponse } from 'next/server';
+import { ethers } from 'ethers';
+import admin from '@/lib/firebase-admin';
+import * as dappParams from '@/lib/dappParams';
+import {
+  authenticateRequest,
+  authenticationError,
+  errorResponse,
+  internalError,
+  validateRequiredFields,
+} from '@/lib/api';
+import type { TradeRequest } from '@/lib/api';
+import contractAbi from './../../../../usersKeysAbi';
+import usdtTokenAbi from '../../../../usdtTokenAbi';
 
 const provider = new ethers.JsonRpcProvider(dappParams.RPC_ENDPOINT);
 
 export async function POST(request: Request) {
-  const trade = await request.json();
-
-  const tradeType = trade["type"];
-  const subjectUID = trade["subjectUID"];
-  const amount = trade["amount"];
-  const ethereumAddress = trade["userAddress"];
-
-  const headersList = headers();
-  const authHeader = headersList.get("Authorization");
-
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return NextResponse.json({ message: "Not authenticated", error: 101 });
+  // Authenticate user
+  const user = await authenticateRequest();
+  if (!user) {
+    return authenticationError();
   }
 
-  const token = authHeader.split("Bearer ")[1];
-
   try {
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const body: TradeRequest = await request.json();
+    const { type: tradeType, subjectUID, amount, userAddress: ethereumAddress } = body;
 
-    if (!decodedToken) {
-      return NextResponse.json({ message: "Not authenticated", error: 101 });
+    // Validate required fields
+    if (!validateRequiredFields(body, ['type', 'subjectUID', 'amount', 'userAddress'])) {
+      return errorResponse('Missing required fields', 103, 400);
     }
 
-    const subjectRef = admin.firestore().collection("users").doc(subjectUID);
-
+    // Get subject data
+    const subjectRef = admin.firestore().collection('users').doc(subjectUID);
     const subjectDoc = await subjectRef.get();
 
     if (!subjectDoc.exists) {
-      return NextResponse.json({ message: "Subject not found", error: 102 });
+      return errorResponse('Subject not found', 102, 404);
     }
 
     const subjectKey = subjectDoc.data()?.ethereumAddress;
 
-    if (tradeType === "buy") {
-      const usdtContract = new ethers.Contract(
-        dappParams.usdtAddress,
-        usdtTokenAbi,
-        provider
-      );
-      const userUsdtBalance = await usdtContract.balanceOf(ethereumAddress);
-
-      const usersKeysCContract = new ethers.Contract(
-        dappParams.usersKeysAddress,
-        contractAbi,
-        provider
-      );
-      const usdtPriceForKeys = await usersKeysCContract.getBuyPrice(
-        subjectKey,
-        amount
-      );
-
-      if (userUsdtBalance < usdtPriceForKeys) {
-        return NextResponse.json({ message: "Insufficient USDT balance" });
-      }
-
-      return NextResponse.json({
-        message: "Ready for frontend to handle buy operation",
-        usdtPriceForKeys: ethers.formatEther(usdtPriceForKeys),
-        subjectKey,
-        ok: true,
-      });
-    } else if (tradeType === "sell") {
-      const usersKeysCContract = new ethers.Contract(
-        dappParams.usersKeysAddress,
-        contractAbi,
-        provider
-      );
-
-      const userKeyCount = await usersKeysCContract.keysBalance(
-        subjectKey,
-        ethereumAddress
-      );
-
-      if (Number(userKeyCount) < amount) {
-        return NextResponse.json({ message: "Insufficient keys to sell" });
-      }
-
-      return NextResponse.json({
-        message: "Ready for frontend to handle sell operation",
-        userKeyCount: Number(userKeyCount),
-        keysToSell: amount,
-        subjectKey,
-        ok: true,
-      });
+    if (tradeType === 'buy') {
+      return await handleBuyValidation(ethereumAddress!, subjectKey, amount);
+    } else if (tradeType === 'sell') {
+      return await handleSellValidation(ethereumAddress!, subjectKey, amount);
+    } else {
+      return errorResponse('Invalid trade type', 103, 400);
     }
   } catch (error) {
-    function isErrorWithCode(error: unknown): error is { code: string } {
-      return (
-        typeof error === "object" &&
-        error !== null &&
-        "code" in error &&
-        typeof (error as any).code === "string"
-      );
+    if (isTokenExpiredError(error)) {
+      return errorResponse('Token expired', 401, 401);
     }
-    if (isErrorWithCode(error) && error.code === "auth/id-token-expired") {
-      return NextResponse.json({ message: "Token expired" });
-    } else {
-      console.error("Error processing trade:", error);
-      return NextResponse.json({ message: "Internal Server Error" });
-    }
+    return internalError(error);
   }
+}
+
+async function handleBuyValidation(
+  ethereumAddress: string,
+  subjectKey: string,
+  amount: number
+): Promise<NextResponse> {
+  const usdtContract = new ethers.Contract(
+    dappParams.usdtAddress,
+    usdtTokenAbi,
+    provider
+  );
+  const userUsdtBalance = await usdtContract.balanceOf(ethereumAddress);
+
+  const usersKeysCContract = new ethers.Contract(
+    dappParams.usersKeysAddress,
+    contractAbi,
+    provider
+  );
+  const usdtPriceForKeys = await usersKeysCContract.getBuyPrice(subjectKey, amount);
+
+  if (userUsdtBalance < usdtPriceForKeys) {
+    return errorResponse('Insufficient USDT balance', 103, 400);
+  }
+
+  return NextResponse.json({
+    message: 'Ready for frontend to handle buy operation',
+    usdtPriceForKeys: ethers.formatEther(usdtPriceForKeys),
+    subjectKey,
+    ok: true,
+  });
+}
+
+async function handleSellValidation(
+  ethereumAddress: string,
+  subjectKey: string,
+  amount: number
+): Promise<NextResponse> {
+  const usersKeysCContract = new ethers.Contract(
+    dappParams.usersKeysAddress,
+    contractAbi,
+    provider
+  );
+
+  const userKeyCount = await usersKeysCContract.keysBalance(subjectKey, ethereumAddress);
+
+  if (Number(userKeyCount) < amount) {
+    return errorResponse('Insufficient keys to sell', 103, 400);
+  }
+
+  return NextResponse.json({
+    message: 'Ready for frontend to handle sell operation',
+    userKeyCount: Number(userKeyCount),
+    keysToSell: amount,
+    subjectKey,
+    ok: true,
+  });
+}
+
+function isTokenExpiredError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code: string }).code === 'auth/id-token-expired'
+  );
 }
