@@ -8,7 +8,7 @@ A Next.js 13+ Web3 social platform integrating Firebase authentication with Ethe
 - **Key Trading**: Buy/sell keys on bonding curves via USDT
 - **Social Features**: Create posts, chat with other users
 - **Real-time Updates**: Firestore listeners for live data synchronization
-- **Multi-network Support**: Sepolia testnet (development) and LAChain (production)
+- **Multi-network Support**: Sepolia testnet (development) and Ethereum (production)
 
 ## Tech Stack
 
@@ -70,7 +70,7 @@ A Next.js 13+ Web3 social platform integrating Firebase authentication with Ethe
 
 | Variable | Description |
 |----------|-------------|
-| `NEXT_PUBLIC_SOCIAL_MODE` | `"development"` (Sepolia) or `"production"` (LAChain) |
+| `NEXT_PUBLIC_SOCIAL_MODE` | `"development"` (Sepolia) or `"production"` (Ethereum) |
 | `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` | WalletConnect project ID (optional) |
 | `NEXT_PUBLIC_API_KEY` | Firebase API key |
 | `NEXT_PUBLIC_AUTH_DOMAIN` | Firebase auth domain |
@@ -158,7 +158,7 @@ src/
 | Network | Chain ID | Mode |
 |---------|----------|------|
 | Sepolia Testnet | 11155111 | development |
-| LAChain Testnet | 418 | production |
+| Ethereum Testnet | 418 | production |
 
 ### Core Contracts
 
