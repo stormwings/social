@@ -19,14 +19,14 @@ export interface SuccessResponse<T = unknown> {
 }
 
 // Post API Types
-export interface MintPostRequest {
+export interface MintPostRequest extends Record<string, unknown> {
   userUID: string;
   postId: string;
   tokenId: string;
   ethereumAddress: string;
 }
 
-export interface TipRequest {
+export interface TipRequest extends Record<string, unknown> {
   fromUser: string;
   toUser: string;
   amount: number;
@@ -34,31 +34,31 @@ export interface TipRequest {
 }
 
 // Setup API Types
-export interface SetupRequest {
+export interface SetupRequest extends Record<string, unknown> {
   username: string;
 }
 
-export interface SetupWalletRequest {
+export interface SetupWalletRequest extends Record<string, unknown> {
   username: string;
   address: string;
 }
 
 // Token API Types
-export interface TokenRequest {
+export interface TokenRequest extends Record<string, unknown> {
   address: string;
   message: string;
   signature: string;
 }
 
 // Trade API Types
-export interface TradeRequest {
+export interface TradeRequest extends Record<string, unknown> {
   type: 'buy' | 'sell';
   subjectUID: string;
   amount: number;
   userAddress?: string;
 }
 
-export interface TradeConfirmRequest {
+export interface TradeConfirmRequest extends Record<string, unknown> {
   ethereumAddress: string;
   subjectUID: string;
   amount: number;
@@ -68,7 +68,7 @@ export interface TradeConfirmRequest {
 }
 
 // Withdraw API Types
-export interface WithdrawRequest {
+export interface WithdrawRequest extends Record<string, unknown> {
   amount: number;
   address: string;
 }

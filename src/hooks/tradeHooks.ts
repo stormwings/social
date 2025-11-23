@@ -6,7 +6,9 @@ import {
   orderBy,
   onSnapshot,
 } from "firebase/firestore";
+import toast from "react-hot-toast";
 import { db } from "@/lib/firebase";
+import { logger } from "@/lib/logger";
 
 type Trade = {
   uid: string;
@@ -31,35 +33,47 @@ export const useTrades = ({
       let q;
       const tradesRef = collection(db, "trades");
 
-      switch (filter) {
-        case "userKeys":
-          if (userKeys.length === 0) return;
-          q = query(
-            tradesRef,
-            where("subject", "in", userKeys),
-            orderBy("timestamp", "desc")
-          );
-          break;
-        case "yourKey":
-          q = query(
-            tradesRef,
-            where("subject", "==", user.uid),
-            orderBy("timestamp", "desc")
-          );
-          break;
-        case "allTrades":
-          q = query(tradesRef, orderBy("timestamp", "desc"));
-          break;
-        default:
-          return;
+      try {
+        switch (filter) {
+          case "userKeys":
+            if (userKeys.length === 0) return;
+            q = query(
+              tradesRef,
+              where("subject", "in", userKeys),
+              orderBy("timestamp", "desc")
+            );
+            break;
+          case "yourKey":
+            q = query(
+              tradesRef,
+              where("subject", "==", user.uid),
+              orderBy("timestamp", "desc")
+            );
+            break;
+          case "allTrades":
+            q = query(tradesRef, orderBy("timestamp", "desc"));
+            break;
+          default:
+            return;
+        }
+
+        const unsubscribe = onSnapshot(
+          q,
+          (querySnapshot) => {
+            const newTrades = querySnapshot.docs.map((doc) => doc.data() as Trade);
+            setTrades(newTrades);
+          },
+          (error) => {
+            logger.error("Error fetching trades", error, { filter });
+            toast.error("Failed to load trades");
+          }
+        );
+
+        return () => unsubscribe();
+      } catch (error) {
+        logger.error("Error setting up trades query", error, { filter });
+        toast.error("Failed to load trades");
       }
-
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const newTrades = querySnapshot.docs.map((doc) => doc.data() as Trade);
-        setTrades(newTrades);
-      });
-
-      return () => unsubscribe();
     }
   }, [filter, userKeys, user]);
 
